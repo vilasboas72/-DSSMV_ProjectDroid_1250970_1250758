@@ -21,10 +21,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f9875772-ffd8-4e01-9107-443850d2a903" name="Changes" comment="Criei 2 activity, uma do maps e uma de login">
-      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/roadguard/MainActivity.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/src/main/java/com/example/roadguard/MapActivity.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/src/main/res/layout/activity_main.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app/src/main/res/layout/activity_map.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/9.3.1/checksums/checksums.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/9.3.1/checksums/checksums.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/9.3.1/checksums/md5-checksums.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/9.3.1/checksums/md5-checksums.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/9.3.1/checksums/sha1-checksums.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/9.3.1/checksums/sha1-checksums.bin" afterDir="false" />
@@ -34,17 +30,14 @@
       <change beforePath="$PROJECT_DIR$/.gradle/9.3.1/fileHashes/resourceHashesCache.bin" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/9.3.1/fileHashes/resourceHashesCache.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/app/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/src/main/res/values/strings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/res/values/strings.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/local.properties" beforeDir="false" afterPath="$PROJECT_DIR$/local.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[LocalEmulator::path=C:\Users\Utilizador\.android\avd\Pixel_5.avd]" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="device_and_snapshot_combo_box_target[LocalEmulator::path=C:\Users\andre\.android\avd\pixel5.avd]" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
@@ -70,6 +63,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "real-andrek"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/vilasboas72/-DSSMV_ProjectDroid_1250970_1250758.git",
+    "accountId": "1df1e0cd-8f74-49f6-9183-3b1d124159e2"
+  }
+}]]></component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/app/src/main/java/com/example/roadguard/MainActivity.java" root0="FORCE_HIGHLIGHTING" />
   </component>
@@ -79,23 +84,23 @@
   </component>
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="1.0000082911290171" />
-      <entry key="MS500" value="1.0963213885448009" />
-      <entry key="S2" value="1.5570968254096662" />
-      <entry key="S5" value="1.7913566814325055" />
-      <entry key="S10" value="1.8895823072838767" />
-      <entry key="S30" value="1.9617496691486571" />
-      <entry key="S60" value="1.9806883649501796" />
-      <entry key="M2" value="1.9902971094324067" />
-      <entry key="M5" value="1.9961075199436524" />
-      <entry key="M10" value="1.9987733038941267" />
-      <entry key="M15" value="2.018970214517241" />
-      <entry key="M30" value="2.568828722188471" />
-      <entry key="H1" value="5.01822161621272" />
-      <entry key="H2" value="8.94942032536566" />
-      <entry key="H4" value="12.544742117445324" />
-      <entry key="D1" value="16.92586363668009" />
-      <entry key="W1" value="17.8419443688986" />
+      <entry key="MS100" value="1.2891720459763218" />
+      <entry key="MS500" value="1.780425062991406" />
+      <entry key="S2" value="2.1849354063770265" />
+      <entry key="S5" value="3.067467241484905" />
+      <entry key="S10" value="3.794808576689788" />
+      <entry key="S30" value="4.528613744247858" />
+      <entry key="S60" value="4.754298117165266" />
+      <entry key="M2" value="4.874537080463072" />
+      <entry key="M5" value="4.949173373284944" />
+      <entry key="M10" value="4.975194318261503" />
+      <entry key="M15" value="5.003124938028136" />
+      <entry key="M30" value="5.559455986310881" />
+      <entry key="H1" value="8.01032313503324" />
+      <entry key="H2" value="11.942893721530169" />
+      <entry key="H4" value="15.540300099556761" />
+      <entry key="D1" value="19.924883885354106" />
+      <entry key="W1" value="20.841797252421433" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="0.0" />
@@ -117,23 +122,23 @@
       <entry key="W1" value="0.0" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="0.5783443303712228" />
-      <entry key="MS500" value="0.9436328422728549" />
-      <entry key="S2" value="1.4395085981190416" />
-      <entry key="S5" value="1.7262426350104714" />
-      <entry key="S10" value="1.853104538919361" />
-      <entry key="S30" value="1.9486158549596126" />
-      <entry key="S60" value="1.9739926282671807" />
-      <entry key="M2" value="1.9869164857584762" />
-      <entry key="M5" value="1.9947473380907006" />
-      <entry key="M10" value="1.998091808062208" />
-      <entry key="M15" value="2.01851419605519" />
-      <entry key="M30" value="2.5685809567771924" />
-      <entry key="H1" value="5.018053914060624" />
-      <entry key="H2" value="8.949301298602062" />
-      <entry key="H4" value="12.544666513534104" />
-      <entry key="D1" value="16.92584776734955" />
-      <entry key="W1" value="17.84194200419989" />
+      <entry key="MS100" value="1.2123547760548625" />
+      <entry key="MS500" value="1.7612432277131398" />
+      <entry key="S2" value="2.1651419680257664" />
+      <entry key="S5" value="3.0342009606110913" />
+      <entry key="S10" value="3.76633236898132" />
+      <entry key="S30" value="4.514911017001904" />
+      <entry key="S60" value="4.74678172681355" />
+      <entry key="M2" value="4.870600265321219" />
+      <entry key="M5" value="4.947554101630773" />
+      <entry key="M10" value="4.974377038046233" />
+      <entry key="M15" value="5.0025770067449775" />
+      <entry key="M30" value="5.559161612821013" />
+      <entry key="H1" value="8.010131997131179" />
+      <entry key="H2" value="11.942762938267414" />
+      <entry key="H4" value="15.54021860148099" />
+      <entry key="D1" value="19.924867030165395" />
+      <entry key="W1" value="20.841794746774706" />
     </decayedShown>
   </component>
   <component name="Non-shared Debug Profiles">
@@ -157,33 +162,37 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Android App.app.executor&quot;: &quot;Run&quot;,
-    &quot;CidrDebugProfileConversion&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.RadMigrateCodeStyle&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.XML&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Android App.app.executor": "Run",
+    "CidrDebugProfileConversion": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.RadMigrateCodeStyle": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "cidr.known.project.marker": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.0",
+    "project.structure.side.proportion": "0.0",
+    "python.packages.toolwindow.project.migrated.to.right.top.v2": "true",
+    "settings.editor.selected.configurable": "AndroidSdkUpdater",
+    "to.speed.mode.migration.done": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="android.template.1546978549">
       <recent name="com.example.roadguard" />
@@ -241,8 +250,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-jdk-30f59d01ecdd-a203e0a19954-intellij.indexing.shared.core-IU-262.10315.125" />
-        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.10315.125" />
+        <option value="bundled-jdk-30f59d01ecdd-a203e0a19954-intellij.indexing.shared.core-IU-262.10968.63" />
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-IU-262.10968.63" />
       </set>
     </attachedChunks>
   </component>
