@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText editEmail;
     private EditText editPassword;
     private Button btnLogin;
+    private Button btnIrRegisto; // <-- Botão de ir para o Registo
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,10 +34,8 @@ public class MainActivity extends AppCompatActivity {
         // 1. Verificação de Sessão (Shared Preferences) com Pop-up
         SharedPreferences sharedPref = getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE);
         if (sharedPref.contains("UID_LOGADO")) {
-            // Vai buscar o email à memória (se não encontrar, escreve "a sua conta")
             String emailGuardado = sharedPref.getString("EMAIL_LOGADO", "a sua conta");
 
-            // Cria e mostra o Pop-up
             new android.app.AlertDialog.Builder(MainActivity.this)
                     .setTitle("Sessão Encontrada")
                     .setMessage("Deseja continuar com o email:\n" + emailGuardado + "?")
@@ -50,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
                     })
                     .setNegativeButton("Usar outra conta", new android.content.DialogInterface.OnClickListener() {
                         public void onClick(android.content.DialogInterface dialog, int which) {
-                            // Apaga os dados guardados para forçar um novo login
                             SharedPreferences.Editor editor = sharedPref.edit();
                             editor.remove("UID_LOGADO");
                             editor.remove("EMAIL_LOGADO");
@@ -64,6 +62,16 @@ public class MainActivity extends AppCompatActivity {
         editEmail = findViewById(R.id.edit_email);
         editPassword = findViewById(R.id.edit_password);
         btnLogin = findViewById(R.id.btn_login);
+        btnIrRegisto = findViewById(R.id.btn_ir_registo);
+
+        // Ação do botão Criar Nova Conta (abre a RegistoActivity)
+        btnIrRegisto.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, RegistoActivity.class);
+                startActivity(intent);
+            }
+        });
 
         // Ação do botão Entrar
         btnLogin.setOnClickListener(new View.OnClickListener() {
@@ -80,7 +88,6 @@ public class MainActivity extends AppCompatActivity {
                         public void run() {
                             HttpURLConnection httpConn = null;
                             try {
-                                // URL da Firebase (Utilizador no singular)
                                 URL url = new URL("https://roadguard-25b31-default-rtdb.europe-west1.firebasedatabase.app/Utilizador.json");
                                 httpConn = (HttpURLConnection) url.openConnection();
                                 httpConn.setRequestMethod("GET");

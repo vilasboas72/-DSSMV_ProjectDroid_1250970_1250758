@@ -1,40 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="32dp"
-        android:gravity="center">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:gravity="center"
+              android:padding="28dp"
+              android:background="#FAFAFA">
+
+    <!-- Título / Nome da Aplicação -->
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RoadGuard"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:textColor="#1F2937"
+            android:layout_marginBottom="8dp" />
 
     <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="40dp"/>
+            android:textSize="14sp"
+            android:textColor="#6B7280"
+            android:layout_marginBottom="40dp" />
 
+    <!-- Campo Email -->
     <EditText
             android:id="@+id/edit_email"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_email"
+            android:layout_height="50dp"
+            android:hint="Email"
             android:inputType="textEmailAddress"
-            android:layout_marginBottom="16dp"/>
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@android:drawable/editbox_background_normal"
+            android:layout_marginBottom="16dp"
+            android:textSize="16sp" />
 
+    <!-- Campo Password -->
     <EditText
             android:id="@+id/edit_password"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_password"
+            android:layout_height="50dp"
+            android:hint="Password"
             android:inputType="textPassword"
-            android:layout_marginBottom="24dp"/>
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@android:drawable/editbox_background_normal"
+            android:layout_marginBottom="24dp"
+            android:textSize="16sp" />
 
+    <!-- Botão Entrar -->
     <Button
             android:id="@+id/btn_login"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/btn_login" />
+            android:layout_height="52dp"
+            android:text="Entrar"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:backgroundTint="#4F46E5"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="12dp" />
+
+    <!-- Botão Ir para Registo -->
+    <Button
+            android:id="@+id/btn_ir_registo"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Criar Nova Conta"
+            android:textSize="16sp"
+            android:backgroundTint="#E5E7EB"
+            android:textColor="#374151" />
 
 </LinearLayout>

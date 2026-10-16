@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="vertical"
+              android:gravity="center"
+              android:padding="28dp"
+              android:background="#FAFAFA">
+
+    <!-- Título do Ecrã -->
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Criar Conta"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="#1F2937"
+            android:layout_marginBottom="8dp" />
+
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Junte-se à comunidade RoadGuard."
+            android:textSize="14sp"
+            android:textColor="#6B7280"
+            android:layout_marginBottom="36dp" />
+
+    <!-- Campo Nome -->
+    <EditText
+            android:id="@+id/edit_registo_nome"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Nome"
+            android:inputType="textPersonName"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@android:drawable/editbox_background_normal"
+            android:layout_marginBottom="16dp"
+            android:textSize="16sp" />
+
+    <!-- Campo Email -->
+    <EditText
+            android:id="@+id/edit_registo_email"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@android:drawable/editbox_background_normal"
+            android:layout_marginBottom="16dp"
+            android:textSize="16sp" />
+
+    <!-- Campo Password -->
+    <EditText
+            android:id="@+id/edit_registo_password"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:background="@android:drawable/editbox_background_normal"
+            android:layout_marginBottom="24dp"
+            android:textSize="16sp" />
+
+    <!-- Botão Confirmar Registo -->
+    <Button
+            android:id="@+id/btn_confirmar_registo"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Registar"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:backgroundTint="#4F46E5"
+            android:textColor="#FFFFFF"
+            android:layout_marginBottom="12dp" />
+
+    <!-- Botão Voltar ao Login -->
+    <Button
+            android:id="@+id/btn_voltar_login"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Voltar ao Login"
+            android:textSize="16sp"
+            android:backgroundTint="#E5E7EB"
+            android:textColor="#374151" />
+
+</LinearLayout>
