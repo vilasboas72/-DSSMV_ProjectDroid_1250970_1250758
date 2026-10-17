@@ -71,7 +71,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
 
-        // O MapView precisa receber os eventos de ciclo de vida da Activity.
+        // O MapView precisa de receber os eventos de ciclo de vida da Activity.
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
     }
@@ -208,6 +208,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     // Centra o mapa na primeira posição e move o mesmo marcador nas seguintes.
+// Centra o mapa na primeira posição e move o mesmo marcador nas seguintes.
     private void showUserLocation(@NonNull Location location) {
         if (tomtomMap == null) return;
 
@@ -219,9 +220,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         }
 
         if (currentLocationMarker == null) {
+            // Usa apenas os parâmetros obrigatórios e um ícone do próprio Android
             MarkerOptions markerOptions = new MarkerOptions(
                     currentPosition,
-                    ImageFactory.INSTANCE.fromResource(R.drawable.ic_user_location_dot),
+                    ImageFactory.INSTANCE.fromResource(android.R.drawable.ic_menu_mylocation), // Ícone padrão do Android que garante que compila
                     null,
                     null,
                     new PointF(0.5f, 0.5f),
