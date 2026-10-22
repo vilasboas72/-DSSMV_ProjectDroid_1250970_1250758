@@ -2,10 +2,14 @@ package com.example.roadguard;
 
 import android.os.Bundle;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import org.json.JSONObject;
 import java.io.OutputStream;
@@ -25,11 +29,28 @@ public class RegistoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_registo);
 
+        // Mantém os campos acessíveis com o teclado aberto e respeita as barras do sistema.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.registo_scroll), (view, insets) -> {
+            Insets bars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets keyboard = insets.getInsets(WindowInsetsCompat.Type.ime());
+            view.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, keyboard.bottom));
+            return insets;
+        });
+
         editNome = findViewById(R.id.edit_registo_nome);
         editEmail = findViewById(R.id.edit_registo_email);
         editPassword = findViewById(R.id.edit_registo_password);
         btnConfirmarRegisto = findViewById(R.id.btn_confirmar_registo);
         btnVoltarLogin = findViewById(R.id.btn_voltar_login);
+
+        editPassword.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                btnConfirmarRegisto.performClick();
+                return true;
+            }
+            return false;
+        });
 
         // Botão para voltar atrás caso o utilizador se engane
         btnVoltarLogin.setOnClickListener(new View.OnClickListener() {

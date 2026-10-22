@@ -1,6 +1,9 @@
 package com.example.roadguard;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
+import android.app.AlertDialog;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -8,16 +11,24 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 import android.graphics.PointF;
+import android.view.Gravity;
 import android.content.pm.ApplicationInfo;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.appcompat.widget.PopupMenu;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.FragmentActivity;
 
 import com.example.roadguard.databinding.ActivityMapBinding;
 import com.tomtom.sdk.map.display.MapOptions;
 import com.tomtom.sdk.map.display.TomTomMap;
 import com.tomtom.sdk.map.display.camera.CameraOptions;
+import com.tomtom.sdk.map.display.common.screen.Padding;
+import com.tomtom.sdk.map.display.map.OnlineCachePolicy;
+import com.tomtom.sdk.map.display.style.StyleMode;
 import com.tomtom.sdk.map.display.marker.Marker;
 import com.tomtom.sdk.map.display.marker.MarkerOptions;
 import com.tomtom.sdk.map.display.ui.MapView;
@@ -45,6 +56,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
 
         binding = ActivityMapBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        setupMapMenu();
 
         String apiKey;
         try {
@@ -65,7 +77,15 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             return;
         }
 
-        MapOptions mapOptions = new MapOptions(apiKey, null);
+        // Em Java, o SDK 1.26 exige os valores que o Kotlin fornece por omissão.
+        MapOptions mapOptions = new MapOptions(
+                apiKey,
+                new CameraOptions(new GeoPoint(41.1779, -8.6080), 14.0, 0.0, 0.0, 45.0),
+                new Padding(0),
+                null,
+                StyleMode.MAIN,
+                OnlineCachePolicy.Default.INSTANCE,
+                false);
         mapView = new MapView(this, mapOptions);
         binding.mapContainer.addView(mapView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -74,6 +94,57 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         // O MapView precisa de receber os eventos de ciclo de vida da Activity.
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(this);
+    }
+
+    // Mantém o botão sobre o mapa e afastado da barra de estado e do recorte do ecrã.
+    private void setupMapMenu() {
+        int margin = Math.round(16 * getResources().getDisplayMetrics().density);
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            FrameLayout.LayoutParams params =
+                    (FrameLayout.LayoutParams) binding.btnMapMenu.getLayoutParams();
+            params.topMargin = margin + insets.top;
+            boolean isRtl = ViewCompat.getLayoutDirection(view) == ViewCompat.LAYOUT_DIRECTION_RTL;
+            params.setMarginEnd(margin + (isRtl ? insets.left : insets.right));
+            binding.btnMapMenu.setLayoutParams(params);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(binding.getRoot());
+        binding.btnMapMenu.setOnClickListener(view -> {
+            PopupMenu menu = new PopupMenu(this, binding.btnMapMenu, Gravity.END);
+            menu.inflate(R.menu.map_menu);
+            menu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == R.id.action_favorite_zones) {
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.favorite_zones)
+                            .setMessage(R.string.favorite_zones_unavailable)
+                            .setPositiveButton(R.string.close, null)
+                            .show();
+                    return true;
+                }
+                if (item.getItemId() == R.id.action_logout) {
+                    logout();
+                    return true;
+                }
+                return false;
+            });
+            menu.show();
+        });
+    }
+
+    // Limpa a identificação local e a pilha de ecrãs para não voltar ao mapa após sair.
+    private void logout() {
+        getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE)
+                .edit()
+                .remove("UID_LOGADO")
+                .remove("EMAIL_LOGADO")
+                .apply();
+        stopLocationUpdates();
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     // Informa o mapa de que a Activity vai ficar visível

@@ -7,4 +7,10 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="roadguard_icon_background">#142D4E</color>
+    <color name="login_navy">#142D4E</color>
+    <color name="login_muted">#64748B</color>
+    <color name="login_header_muted">#D2DFEB</color>
+    <color name="login_border">#CBD5E1</color>
+    <color name="login_field">#F8FAFC</color>
 </resources>

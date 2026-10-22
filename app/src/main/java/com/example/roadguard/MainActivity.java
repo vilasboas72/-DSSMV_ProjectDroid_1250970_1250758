@@ -5,11 +5,18 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import org.json.JSONObject;
 import java.io.BufferedReader;
@@ -30,6 +37,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Deixa espaço para as barras do sistema e permite deslocar o formulário com o teclado aberto.
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.login_scroll), (view, insets) -> {
+            Insets bars = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            Insets keyboard = insets.getInsets(WindowInsetsCompat.Type.ime());
+            view.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, keyboard.bottom));
+            return insets;
+        });
+
 
         // Abre o ficheiro interno da app (RoadGuardPrefs) em modo privado.
         SharedPreferences sharedPref = getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE);
@@ -40,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
             String emailGuardado = sharedPref.getString("EMAIL_LOGADO", "a sua conta");
 
             // Constrói um Pop-up a perguntar se o utilizador quer usar a sessão guardada.
-            new android.app.AlertDialog.Builder(MainActivity.this)
+            android.app.AlertDialog dialogSessao = new android.app.AlertDialog.Builder(MainActivity.this)
                     .setTitle("Sessão Encontrada")
                     .setMessage("Deseja continuar com o email:\n" + emailGuardado + "?")
                     .setCancelable(false) // Obriga o utilizador a escolher uma opção.
@@ -61,7 +77,18 @@ public class MainActivity extends AppCompatActivity {
                             editor.apply(); // Guarda as alterações feitas na memória.
                         }
                     })
-                    .show();
+                    .create();
+
+            dialogSessao.show();
+            // Centra a janela da mensagem, independentemente da posição definida pelo tema.
+            Window janela = dialogSessao.getWindow();
+            if (janela != null) {
+                janela.setGravity(Gravity.CENTER);
+                WindowManager.LayoutParams parametros = janela.getAttributes();
+                parametros.x = 0;
+                parametros.y = 0;
+                janela.setAttributes(parametros);
+            }
         }
 
 
@@ -69,6 +96,15 @@ public class MainActivity extends AppCompatActivity {
         editPassword = findViewById(R.id.edit_password);
         btnLogin = findViewById(R.id.btn_login);
         btnIrRegisto = findViewById(R.id.btn_ir_registo);
+
+        // O botão de concluir do teclado executa a mesma ação que o botão Entrar.
+        editPassword.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                btnLogin.performClick();
+                return true;
+            }
+            return false;
+        });
 
         // Ação para o botão de Registo: ao clicar, viaja para a RegistoActivity.
         btnIrRegisto.setOnClickListener(new View.OnClickListener() {

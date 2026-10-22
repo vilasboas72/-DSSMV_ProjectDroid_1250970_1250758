@@ -1,89 +1,149 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              android:gravity="center"
-              android:padding="28dp"
-              android:background="#FAFAFA">
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/registo_scroll"
+        android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="@color/login_navy" android:fillViewport="true"
+        android:clipToPadding="true" android:scrollbars="none">
 
-    <!-- Título do Ecrã -->
-    <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Criar Conta"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:textColor="#1F2937"
-            android:layout_marginBottom="8dp" />
+    <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:focusableInTouchMode="true">
 
-    <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Junte-se à comunidade RoadGuard."
-            android:textSize="14sp"
-            android:textColor="#6B7280"
-            android:layout_marginBottom="36dp" />
+        <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:background="@drawable/bg_login_header"
+                android:paddingStart="28dp" android:paddingEnd="28dp"
+                android:paddingTop="28dp" android:paddingBottom="32dp">
 
-    <!-- Campo Nome -->
-    <EditText
-            android:id="@+id/edit_registo_nome"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="Nome"
-            android:inputType="textPersonName"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:background="@android:drawable/editbox_background_normal"
-            android:layout_marginBottom="16dp"
-            android:textSize="16sp" />
+            <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:gravity="center_vertical" android:orientation="horizontal">
+                <ImageView
+                        android:layout_width="44dp" android:layout_height="44dp"
+                        android:src="@drawable/ic_login_brand" android:importantForAccessibility="no" />
+                <TextView
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp" android:text="@string/app_name"
+                        android:fontFamily="sans-serif-medium" android:textSize="23sp"
+                        android:textColor="@color/white" />
+            </LinearLayout>
 
-    <!-- Campo Email -->
-    <EditText
-            android:id="@+id/edit_registo_email"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="Email"
-            android:inputType="textEmailAddress"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:background="@android:drawable/editbox_background_normal"
-            android:layout_marginBottom="16dp"
-            android:textSize="16sp" />
+            <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="26dp" android:text="@string/registo_headline"
+                    android:textSize="34sp" android:fontFamily="sans-serif-medium"
+                    android:lineSpacingExtra="2dp" android:textColor="@color/white" />
+            <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp" android:text="@string/registo_tagline"
+                    android:textSize="14sp" android:textColor="@color/login_header_muted"
+                    android:lineSpacingExtra="3dp" />
+        </LinearLayout>
 
-    <!-- Campo Password -->
-    <EditText
-            android:id="@+id/edit_registo_password"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:hint="Password"
-            android:inputType="textPassword"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:background="@android:drawable/editbox_background_normal"
-            android:layout_marginBottom="24dp"
-            android:textSize="16sp" />
+        <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:background="@drawable/bg_login_form"
+                android:paddingStart="28dp" android:paddingEnd="28dp"
+                android:paddingTop="30dp" android:paddingBottom="24dp">
 
-    <!-- Botão Confirmar Registo -->
-    <Button
-            android:id="@+id/btn_confirmar_registo"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="Registar"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:backgroundTint="#4F46E5"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="12dp" />
+            <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/registo_title" android:textSize="25sp"
+                    android:fontFamily="sans-serif-medium" android:textColor="@color/login_navy" />
+            <TextView
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp" android:layout_marginBottom="24dp"
+                    android:text="@string/registo_subtitle" android:textSize="14sp"
+                    android:textColor="@color/login_muted" />
 
-    <!-- Botão Voltar ao Login -->
-    <Button
-            android:id="@+id/btn_voltar_login"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="Voltar ao Login"
-            android:textSize="16sp"
-            android:backgroundTint="#E5E7EB"
-            android:textColor="#374151" />
+            <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/hint_name" app:boxBackgroundColor="@color/login_field"
+                    app:boxStrokeColor="@color/login_field_stroke"
+                    app:boxCornerRadiusTopStart="12dp" app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp" app:boxCornerRadiusBottomEnd="12dp"
+                    app:startIconDrawable="@drawable/ic_login_person" app:startIconTint="@color/login_muted">
+                <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_registo_nome"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:minHeight="56dp" android:inputType="textPersonName"
+                        android:autofillHints="name" android:imeOptions="actionNext"
+                        android:maxLines="1" android:textSize="16sp"
+                        android:textColor="@color/login_navy" android:textColorHint="@color/login_muted" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-</LinearLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp" android:hint="@string/hint_email" app:boxBackgroundColor="@color/login_field"
+                    app:boxStrokeColor="@color/login_field_stroke"
+                    app:boxCornerRadiusTopStart="12dp" app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp" app:boxCornerRadiusBottomEnd="12dp"
+                    app:startIconDrawable="@drawable/ic_login_email" app:startIconTint="@color/login_muted">
+                <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_registo_email"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:minHeight="56dp" android:inputType="textEmailAddress"
+                        android:autofillHints="emailAddress" android:imeOptions="actionNext"
+                        android:maxLines="1" android:textSize="16sp"
+                        android:textColor="@color/login_navy" android:textColorHint="@color/login_muted" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp" android:hint="@string/hint_password"
+                    app:boxBackgroundColor="@color/login_field" app:boxStrokeColor="@color/login_field_stroke"
+                    app:boxCornerRadiusTopStart="12dp" app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp" app:boxCornerRadiusBottomEnd="12dp"
+                    app:startIconDrawable="@drawable/ic_login_lock" app:startIconTint="@color/login_muted"
+                    app:endIconMode="password_toggle" app:endIconTint="@color/login_muted">
+                <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_registo_password"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:minHeight="56dp" android:inputType="textPassword"
+                        android:autofillHints="newPassword" android:imeOptions="actionDone"
+                        android:maxLines="1" android:textSize="16sp"
+                        android:textColor="@color/login_navy" android:textColorHint="@color/login_muted" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_confirmar_registo"
+                    android:layout_width="match_parent" android:layout_height="56dp"
+                    android:layout_marginTop="24dp" android:insetTop="0dp" android:insetBottom="0dp"
+                    android:text="@string/registo_create_account" android:textAllCaps="false" android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium" android:textColor="@color/white"
+                    app:backgroundTint="@color/login_navy" app:cornerRadius="14dp"
+                    app:icon="@drawable/ic_login_arrow" app:iconGravity="textEnd"
+                    app:iconPadding="12dp" app:iconTint="@color/white" />
+
+            <LinearLayout
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp" android:layout_marginBottom="18dp"
+                    android:gravity="center_vertical" android:orientation="horizontal">
+                <View android:layout_width="0dp" android:layout_height="1dp"
+                        android:layout_weight="1" android:background="@color/login_border" />
+                <TextView
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:paddingStart="14dp" android:paddingEnd="14dp"
+                        android:text="@string/registo_has_account" android:textSize="13sp"
+                        android:textColor="@color/login_muted" />
+                <View android:layout_width="0dp" android:layout_height="1dp"
+                        android:layout_weight="1" android:background="@color/login_border" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_voltar_login"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent" android:layout_height="52dp"
+                    android:insetTop="0dp" android:insetBottom="0dp"
+                    android:text="@string/registo_back_to_login" android:textAllCaps="false"
+                    android:textSize="15sp" android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/login_navy" app:backgroundTint="@color/white"
+                    app:strokeColor="@color/login_border" app:strokeWidth="1dp" app:cornerRadius="14dp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -4,4 +4,23 @@
     <string name="hint_password">Password</string>
     <string name="btn_login">Entrar</string>
     <string name="title_activity_map">Mapa</string>
+    <string name="map_menu_description">Abrir menu do mapa</string>
+    <string name="favorite_zones">Zonas Favoritas</string>
+    <string name="favorite_zones_unavailable">As Zonas Favoritas ainda não estão disponíveis.</string>
+    <string name="logout">Terminar Sessão</string>
+    <string name="close">Fechar</string>
+    <string name="login_headline">O teu caminho,\nmais seguro.</string>
+    <string name="login_tagline">Mais atenção à estrada. Menos surpresas.</string>
+    <string name="login_title">Iniciar sessão</string>
+    <string name="login_subtitle">Entra na tua conta para explorar o mapa.</string>
+    <string name="login_new_here">És novo por aqui?</string>
+    <string name="login_create_account">Criar conta</string>
+    <string name="hint_name">Nome</string>
+    <string name="registo_headline">Começa aqui,\na tua viagem.</string>
+    <string name="registo_tagline">Junta-te à comunidade RoadGuard.</string>
+    <string name="registo_title">Criar conta</string>
+    <string name="registo_subtitle">Preenche os teus dados para começar.</string>
+    <string name="registo_create_account">Criar conta</string>
+    <string name="registo_has_account">Já tens uma conta?</string>
+    <string name="registo_back_to_login">Voltar ao login</string>
 </resources>
