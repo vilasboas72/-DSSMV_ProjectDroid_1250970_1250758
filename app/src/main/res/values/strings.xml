@@ -44,4 +44,18 @@
     <string name="location_access_error">Não foi possível aceder à localização do telemóvel.</string>
     <string name="gps_disabled">Ativa o GPS do telemóvel e tenta novamente.</string>
     <string name="location_permission_denied">A permissão de localização foi recusada.</string>
+    <string name="start_trip">Iniciar viagem</string>
+    <string name="end_trip">Terminar viagem</string>
+    <string name="search_not_found">Não foram encontrados locais. Tenta outra pesquisa.</string>
+    <string name="search_error">Não foi possível pesquisar. Verifica a ligação à internet.</string>
+    <string name="route_error">Não foi possível calcular a rota. Tenta escolher outro local.</string>
+    <string name="route_needs_location">Aguarda pela localização GPS para calcular a rota.</string>
+    <string name="route_loading">A calcular rota…</string>
+    <string name="route_trip_started">Viagem iniciada</string>
+    <string name="route_preview">Rota de carro</string>
+    <string name="route_maneuver_format">Daqui a %1$s, %2$s</string>
+    <string name="route_remaining_format">Faltam %1$s · cerca de %2$s min</string>
+    <string name="route_arrival">Chegaste ao destino</string>
+    <string name="route_keep_following">Continua pela rota até ao destino.</string>
+    <string name="route_summary_format">%1$s · cerca de %2$s min</string>
 </resources>

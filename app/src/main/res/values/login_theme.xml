@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.RoadGuard.Login" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="Base.Theme.RoadGuard.Login" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/login_navy</item>
         <item name="colorPrimaryVariant">@color/login_navy</item>
         <item name="colorOnPrimary">@color/white</item>
@@ -7,8 +7,8 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@color/login_navy</item>
         <item name="android:navigationBarColor">@color/login_navy</item>
-        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowBackground">@color/login_navy</item>
         <item name="android:fontFamily">sans-serif</item>
     </style>
+    <style name="Theme.RoadGuard.Login" parent="Base.Theme.RoadGuard.Login" />
 </resources>
