@@ -57,10 +57,10 @@ public class MainActivity extends AppCompatActivity {
 
             // Constrói um Pop-up a perguntar se o utilizador quer usar a sessão guardada.
             android.app.AlertDialog dialogSessao = new android.app.AlertDialog.Builder(MainActivity.this)
-                    .setTitle("Sessão Encontrada")
-                    .setMessage("Deseja continuar com o email:\n" + emailGuardado + "?")
+                    .setTitle(R.string.saved_session_title)
+                    .setMessage(getString(R.string.saved_session_message, emailGuardado))
                     .setCancelable(false) // Obriga o utilizador a escolher uma opção.
-                    .setPositiveButton("Continuar", new android.content.DialogInterface.OnClickListener() {
+                    .setPositiveButton(R.string.continue_session, new android.content.DialogInterface.OnClickListener() {
                         public void onClick(android.content.DialogInterface dialog, int which) {
                             // Cria um Intent (intenção de viagem) para ir direto para o Mapa.
                             Intent intent = new Intent(MainActivity.this, MapActivity.class);
@@ -68,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
                             finish(); // Destrói o ecrã de login para o utilizador não conseguir voltar para trás.
                         }
                     })
-                    .setNegativeButton("Usar outra conta", new android.content.DialogInterface.OnClickListener() {
+                    .setNegativeButton(R.string.use_another_account, new android.content.DialogInterface.OnClickListener() {
                         public void onClick(android.content.DialogInterface dialog, int which) {
                             // Se quiser usar outra conta, abre o editor de memória e limpa a sessão antiga.
                             SharedPreferences.Editor editor = sharedPref.edit();
@@ -161,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
                                         runOnUiThread(new Runnable() {
                                             @Override
                                             public void run() {
-                                                Toast.makeText(MainActivity.this, "A base de dados está vazia ou o URL está errado.", Toast.LENGTH_LONG).show();
+                                                Toast.makeText(MainActivity.this, R.string.database_empty, Toast.LENGTH_LONG).show();
                                             }
                                         });
                                     } else {
@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
                                             runOnUiThread(new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    Toast.makeText(MainActivity.this, "Email ou password incorretos!", Toast.LENGTH_SHORT).show();
+                                                    Toast.makeText(MainActivity.this, R.string.login_invalid, Toast.LENGTH_SHORT).show();
                                                 }
                                             });
                                         }
@@ -220,11 +220,10 @@ public class MainActivity extends AppCompatActivity {
                             } catch (Exception e) {
                                 // O bloco catch impede que a app feche caso a internet falhe a meio do processo.
                                 e.printStackTrace();
-                                final String mensagemErroReal = e.toString();
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(MainActivity.this, "Erro: " + mensagemErroReal, Toast.LENGTH_LONG).show();
+                                        Toast.makeText(MainActivity.this, R.string.login_error, Toast.LENGTH_LONG).show();
                                     }
                                 });
                             } finally {
@@ -236,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
 
                 } else {
                     // Aviso caso a pessoa tenha clicado em "Entrar" com as caixas vazias.
-                    Toast.makeText(MainActivity.this, "Por favor, preencha o email e a password.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, R.string.fill_login_fields, Toast.LENGTH_SHORT).show();
                 }
             }
         });

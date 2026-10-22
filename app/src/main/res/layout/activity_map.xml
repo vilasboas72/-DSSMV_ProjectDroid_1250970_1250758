@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -7,6 +8,47 @@
             android:id="@+id/map_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+    <!-- Campo visual de pesquisa; a pesquisa será ligada numa etapa seguinte. -->
+    <LinearLayout
+            android:id="@+id/map_search_bar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="top|start"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="76dp"
+            android:background="@drawable/bg_map_search"
+            android:elevation="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="12dp">
+
+        <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@string/search_description"
+                android:src="@android:drawable/ic_menu_search"
+                app:tint="#5F6368" />
+
+        <EditText
+                android:id="@+id/map_search_input"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="@string/search_map"
+                android:imeOptions="actionSearch"
+                android:inputType="textCapSentences"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:importantForAutofill="no"
+                android:singleLine="true"
+                android:textColor="#202124"
+                android:textColorHint="#70757A"
+                android:textSize="16sp" />
+    </LinearLayout>
 
     <ImageButton
             android:id="@+id/btn_map_menu"

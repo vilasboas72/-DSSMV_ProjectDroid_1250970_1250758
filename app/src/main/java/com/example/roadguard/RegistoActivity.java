@@ -1,6 +1,7 @@
 package com.example.roadguard;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
@@ -13,6 +14,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import org.json.JSONObject;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -93,7 +95,7 @@ public class RegistoActivity extends AppCompatActivity {
 
                                 // Enviar o JSON no corpo do pedido
                                 OutputStream os = httpConn.getOutputStream();
-                                os.write(novoUtilizador.toString().getBytes("UTF-8"));
+                                os.write(novoUtilizador.toString().getBytes(StandardCharsets.UTF_8));
                                 os.close();
 
                                 final int responseCode = httpConn.getResponseCode();
@@ -101,7 +103,7 @@ public class RegistoActivity extends AppCompatActivity {
                                     runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
-                                            Toast.makeText(RegistoActivity.this, "Conta criada com sucesso!", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(RegistoActivity.this, R.string.account_created, Toast.LENGTH_SHORT).show();
                                             finish(); // Fecha o ecrã de registo e volta ao Login
                                         }
                                     });
@@ -109,17 +111,16 @@ public class RegistoActivity extends AppCompatActivity {
                                     runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
-                                            Toast.makeText(RegistoActivity.this, "Erro ao criar conta: " + responseCode, Toast.LENGTH_LONG).show();
+                                            Toast.makeText(RegistoActivity.this, getString(R.string.register_error_code, responseCode), Toast.LENGTH_LONG).show();
                                         }
                                     });
                                 }
                             } catch (Exception e) {
-                                e.printStackTrace();
-                                final String erro = e.toString();
+                                Log.e("RegistoActivity", "Falha ao criar a conta", e);
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(RegistoActivity.this, "Erro: " + erro, Toast.LENGTH_LONG).show();
+                                        Toast.makeText(RegistoActivity.this, R.string.register_error, Toast.LENGTH_LONG).show();
                                     }
                                 });
                             } finally {
@@ -129,7 +130,7 @@ public class RegistoActivity extends AppCompatActivity {
                     }).start();
 
                 } else {
-                    Toast.makeText(RegistoActivity.this, "Por favor, preencha todos os campos.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegistoActivity.this, R.string.fill_all_fields, Toast.LENGTH_SHORT).show();
                 }
             }
         });

@@ -1,13 +1,13 @@
 <resources>
     <string name="app_name">RoadGuard</string>
-    <string name="hint_email">Email</string>
-    <string name="hint_password">Password</string>
+    <string name="hint_email">E-mail</string>
+    <string name="hint_password">Palavra-passe</string>
     <string name="btn_login">Entrar</string>
     <string name="title_activity_map">Mapa</string>
     <string name="map_menu_description">Abrir menu do mapa</string>
-    <string name="favorite_zones">Zonas Favoritas</string>
-    <string name="favorite_zones_unavailable">As Zonas Favoritas ainda não estão disponíveis.</string>
-    <string name="logout">Terminar Sessão</string>
+    <string name="favorite_zones">Zonas favoritas</string>
+    <string name="favorite_zones_unavailable">As zonas favoritas ainda não estão disponíveis.</string>
+    <string name="logout">Terminar sessão</string>
     <string name="close">Fechar</string>
     <string name="login_headline">O teu caminho,\nmais seguro.</string>
     <string name="login_tagline">Mais atenção à estrada. Menos surpresas.</string>
@@ -23,4 +23,25 @@
     <string name="registo_create_account">Criar conta</string>
     <string name="registo_has_account">Já tens uma conta?</string>
     <string name="registo_back_to_login">Voltar ao login</string>
+    <string name="search_map">Pesquisar no mapa</string>
+    <string name="search_description">Pesquisar</string>
+    <string name="saved_session_title">Sessão iniciada</string>
+    <string name="saved_session_message">Queres continuar com a conta %1$s?</string>
+    <string name="continue_session">Continuar</string>
+    <string name="use_another_account">Usar outra conta</string>
+    <string name="database_empty">Não foi possível encontrar utilizadores. Verifica a ligação à base de dados.</string>
+    <string name="login_invalid">E-mail ou palavra-passe incorretos.</string>
+    <string name="login_error">Não foi possível iniciar sessão. Verifica a ligação à internet.</string>
+    <string name="fill_login_fields">Preenche o e-mail e a palavra-passe.</string>
+    <string name="account_created">Conta criada com sucesso!</string>
+    <string name="register_error_code">Não foi possível criar a conta (erro %1$d).</string>
+    <string name="register_error">Não foi possível criar a conta. Verifica a ligação à internet.</string>
+    <string name="fill_all_fields">Preenche todos os campos.</string>
+    <string name="map_config_error">Não foi possível carregar as definições da aplicação.</string>
+    <string name="tomtom_key_missing">A chave da TomTom não está configurada.</string>
+    <string name="location_unavailable">Ainda não foi possível obter a localização.</string>
+    <string name="location_permission_hint">Permite o acesso à localização para a mostrar no mapa.</string>
+    <string name="location_access_error">Não foi possível aceder à localização do telemóvel.</string>
+    <string name="gps_disabled">Ativa o GPS do telemóvel e tenta novamente.</string>
+    <string name="location_permission_denied">A permissão de localização foi recusada.</string>
 </resources>
