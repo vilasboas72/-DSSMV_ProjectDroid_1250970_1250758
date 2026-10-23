@@ -227,8 +227,8 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
 
     // Aguarda o GPS e pede ao TomTom opções próximas do utilizador.
     private void pesquisarLocais(String consulta, int pesquisaAtual) {
-        GeoPoint centro = currentPosition != null ? currentPosition : new GeoPoint(41.1779, -8.6080);
-        apiTomTom.pesquisarLocais(consulta, centro, new TomTomApi.Callback<>() {
+        // Se o GPS ainda não respondeu, pesquisa sem forçar a localização do.
+        apiTomTom.pesquisarLocais(consulta, currentPosition, new TomTomApi.Callback<>() {
             @Override
             public void aoConcluir(java.util.List<TomTomApi.Local> locais) {
                 if (pesquisaAtual != numeroDaPesquisa) return;

@@ -67,14 +67,17 @@ final class TomTomApi {
         this.chaveApi = chaveApi;
     }
 
-    // Procura sugestões perto da posição atual, sem limitar o raio de pesquisa.
+    // Procura sugestões, dando prioridade à posição atual quando já está disponível.
     void pesquisarLocais(String texto, GeoPoint posicao, Callback<List<Local>> callback) {
         executor.execute(() -> {
             try {
                 String url = "https://api.tomtom.com/search/2/search/" + Uri.encode(texto)
                         + ".json?key=" + Uri.encode(chaveApi)
-                        + "&typeahead=true&limit=6&countrySet=PT&language=pt-PT"
-                        + "&geobias=point:" + posicao.getLatitude() + "," + posicao.getLongitude();
+                        + "&typeahead=true&limit=6&language=pt-PT";
+                // Sem countrySet=PT, a API também pode devolver locais nos EUA ou noutros países.
+                if (posicao != null) {
+                    url += "&geobias=point:" + posicao.getLatitude() + "," + posicao.getLongitude();
+                }
                 JSONObject resposta = pedirJson(url);
                 JSONArray resultados = resposta.optJSONArray("results");
                 List<Local> locais = new ArrayList<>();
