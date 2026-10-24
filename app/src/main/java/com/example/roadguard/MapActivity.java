@@ -38,6 +38,7 @@ import com.example.roadguard.databinding.ActivityMapBinding;
 import com.tomtom.sdk.map.display.MapOptions;
 import com.tomtom.sdk.map.display.TomTomMap;
 import com.tomtom.sdk.map.display.camera.CameraOptions;
+import com.tomtom.sdk.map.display.camera.CameraPosition;
 import com.tomtom.sdk.map.display.common.screen.Padding;
 import com.tomtom.sdk.map.display.common.WidthByZoom;
 import com.tomtom.sdk.map.display.polyline.PolylineOptions;
@@ -48,7 +49,6 @@ import com.tomtom.sdk.map.display.marker.Marker;
 import com.tomtom.sdk.map.display.marker.MarkerOptions;
 import com.tomtom.sdk.map.display.ui.MapView;
 import com.tomtom.sdk.map.display.ui.MapReadyCallback;
-import com.tomtom.sdk.map.display.ui.Margin;
 import com.tomtom.sdk.location.GeoPoint;
 import com.tomtom.sdk.map.display.image.ImageFactory;
 
@@ -71,6 +71,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private int margemSuperiorDoSistema;
     private int margemFinalDoSistema;
     private int margemInferiorDoSistema;
+    private int margemEsquerdaDoSistema;
     private Location ultimaLocalizacaoGPS;
     private TomTomApi apiTomTom;
     private TomTomApi.Local destinoSelecionado;
@@ -140,7 +141,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         configurarPesquisaERota();
         interfaceMapa.btnReportAlert.setOnClickListener(view -> abrirCriacaoDeAlerta());
         interfaceMapa.routePanel.addOnLayoutChangeListener((view, left, top, right, bottom,
-                oldLeft, oldTop, oldRight, oldBottom) -> atualizarPosicaoDoBotaoAlerta());
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            atualizarPosicaoDoBotaoAlerta();
+            atualizarPosicaoDoBotaoCentralizar();
+        });
 
         // Em Java, o SDK 1.26 exige os valores que o Kotlin fornece por omissão.
         MapOptions opcoesDoMapa = new MapOptions(
@@ -152,11 +156,18 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 OnlineCachePolicy.Default.INSTANCE,
                 false);
         vistaDoMapa = new MapView(this, opcoesDoMapa);
+        // Mantém o fundo do nosso botão e usa o desenho original de localização da TomTom.
+        ((View) vistaDoMapa.getCompassButton()).setVisibility(View.INVISIBLE);
+        ((View) vistaDoMapa.getCurrentLocationButton()).setVisibility(View.INVISIBLE);
+        interfaceMapa.btnCenterMap.setImageResource(vistaDoMapa.getCurrentLocationButton().getIcon());
+        interfaceMapa.btnCenterMap.setColorFilter(Color.WHITE);
+        interfaceMapa.btnCenterMap.setOnClickListener(view -> centrarNoUtilizador());
+        interfaceMapa.btnCompass.setOnClickListener(view -> orientarMapaParaNorte());
         atualizarPosicaoDaBussola();
-        vistaDoMapa.getCurrentLocationButton().addCurrentLocationButtonClickListener(this::centrarNoUtilizador);
         interfaceMapa.mapContainer.addView(vistaDoMapa, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
+        atualizarPosicaoDoBotaoCentralizar();
 
         // O MapView precisa de receber os eventos de ciclo de vida da Activity.
         vistaDoMapa.onCreate(savedInstanceState);
@@ -171,6 +182,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                     WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             margemSuperiorDoSistema = insets.top;
             margemInferiorDoSistema = insets.bottom;
+            margemEsquerdaDoSistema = insets.left;
             margemFinalDoSistema = ViewCompat.getLayoutDirection(view) == ViewCompat.LAYOUT_DIRECTION_RTL
                     ? insets.left : insets.right;
             FrameLayout.LayoutParams params =
@@ -193,10 +205,17 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             sugestoesParams.setMarginStart(margemInicial);
             sugestoesParams.setMarginEnd(margemFinalDaPesquisa);
             interfaceMapa.searchSuggestions.setLayoutParams(sugestoesParams);
+            FrameLayout.LayoutParams navigationParams = (FrameLayout.LayoutParams)
+                    interfaceMapa.navigationBanner.getLayoutParams();
+            navigationParams.topMargin = margin + insets.top;
+            navigationParams.setMarginStart(margemInicial);
+            navigationParams.setMarginEnd(margemFinalDaPesquisa);
+            interfaceMapa.navigationBanner.setLayoutParams(navigationParams);
             FrameLayout.LayoutParams painelParams = (FrameLayout.LayoutParams) interfaceMapa.routePanel.getLayoutParams();
             painelParams.bottomMargin = margin + insets.bottom;
             interfaceMapa.routePanel.setLayoutParams(painelParams);
             atualizarPosicaoDoBotaoAlerta();
+            atualizarPosicaoDoBotaoCentralizar();
             atualizarPosicaoDaBussola();
             return windowInsets;
         });
@@ -230,7 +249,9 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
 
         interfaceMapa.mapSearchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence texto, int inicio, int quantidade, int depois) { }
-            @Override public void onTextChanged(CharSequence texto, int inicio, int antes, int quantidade) { }
+            @Override public void onTextChanged(CharSequence texto, int inicio, int antes, int quantidade) {
+                interfaceMapa.btnClearSearch.setVisibility(texto.length() > 0 ? View.VISIBLE : View.GONE);
+            }
             @Override public void afterTextChanged(Editable texto) {
                 if (aEscolherDestino) return;
                 if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
@@ -243,6 +264,21 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 pesquisaPendente = () -> pesquisarLocais(consulta, pesquisaAtual);
                 gestorPesquisa.postDelayed(pesquisaPendente, 450);
             }
+        });
+
+        interfaceMapa.btnClearSearch.setOnClickListener(view -> {
+            if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
+            numeroDaPesquisa++;
+            destinoSelecionado = null;
+            rotaPlaneada = null;
+            linhaDaRota = null;
+            resultadosDaPesquisa.clear();
+            adaptadorDaPesquisa.clear();
+            interfaceMapa.searchSuggestions.setVisibility(View.GONE);
+            interfaceMapa.routePanel.setVisibility(View.GONE);
+            if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
+            interfaceMapa.mapSearchInput.setText("");
+            atualizarPosicaoDoBotaoCentralizar();
         });
 
         interfaceMapa.searchSuggestions.setOnItemClickListener((lista, linha, posicao, id) -> {
@@ -258,6 +294,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
 
         interfaceMapa.btnStartTrip.setOnClickListener(view -> iniciarViagem());
         interfaceMapa.btnEndTrip.setOnClickListener(view -> terminarViagem());
+        interfaceMapa.btnDismissRoute.setOnClickListener(view -> cancelarRotaPlaneada());
     }
 
     private final java.util.List<TomTomApi.Local> resultadosDaPesquisa = new java.util.ArrayList<>();
@@ -302,11 +339,12 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         atualizarPosicaoDoBotaoAlerta();
         interfaceMapa.routeDestination.setText(destinoSelecionado.nome);
         interfaceMapa.routeSummary.setText(R.string.route_loading);
-        interfaceMapa.routeGuidance.setText("");
         interfaceMapa.btnStartTrip.setEnabled(false);
-        apiTomTom.calcularRota(posicaoAtual, destinoSelecionado, new TomTomApi.Resposta<>() {
+        TomTomApi.Local destinoPedido = destinoSelecionado;
+        apiTomTom.calcularRota(posicaoAtual, destinoPedido, new TomTomApi.Resposta<>() {
             @Override
             public void aoConcluir(TomTomApi.Rota rota) {
+                if (destinoSelecionado != destinoPedido) return;
                 if (rota.pontos.size() < 2 || mapaTomTom == null) {
                     aoFalhar();
                     return;
@@ -328,14 +366,15 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 linhaDaRota = mapaTomTom.addPolyline(opcoesDaLinha);
                 mostrarResumoDaRota();
                 interfaceMapa.btnStartTrip.setEnabled(true);
-                double centroLat = (posicaoAtual.getLatitude() + destinoSelecionado.latitude) / 2.0;
-                double centroLon = (posicaoAtual.getLongitude() + destinoSelecionado.longitude) / 2.0;
+                double centroLat = (posicaoAtual.getLatitude() + destinoPedido.latitude) / 2.0;
+                double centroLon = (posicaoAtual.getLongitude() + destinoPedido.longitude) / 2.0;
                 double zoom = rota.distanciaMetros < 5000 ? 13.0 : rota.distanciaMetros < 20000 ? 11.5 : 9.5;
                 mapaTomTom.moveCamera(new CameraOptions(new GeoPoint(centroLat, centroLon), zoom, 0.0, 0.0, 45.0));
             }
 
             @Override
             public void aoFalhar() {
+                if (destinoSelecionado != destinoPedido) return;
                 interfaceMapa.routePanel.setVisibility(View.GONE);
                 atualizarPosicaoDoBotaoAlerta();
                 Toast.makeText(MapActivity.this, R.string.route_error, Toast.LENGTH_LONG).show();
@@ -349,7 +388,25 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 : rotaPlaneada.distanciaMetros + " m";
         int minutos = Math.max(1, (rotaPlaneada.duracaoSegundos + 59) / 60);
         interfaceMapa.routeSummary.setText(getString(R.string.route_summary_format, distancia, String.valueOf(minutos)));
-        interfaceMapa.routeGuidance.setText(R.string.route_preview);
+    }
+
+    // Fecha os detalhes e apaga a rota antes de começar a viagem.
+    private void cancelarRotaPlaneada() {
+        if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
+        numeroDaPesquisa++;
+        destinoSelecionado = null;
+        rotaPlaneada = null;
+        linhaDaRota = null;
+        resultadosDaPesquisa.clear();
+        adaptadorDaPesquisa.clear();
+        interfaceMapa.searchSuggestions.setVisibility(View.GONE);
+        interfaceMapa.routePanel.setVisibility(View.GONE);
+        interfaceMapa.navigationBanner.setVisibility(View.GONE);
+        interfaceMapa.mapSearchBar.setVisibility(View.VISIBLE);
+        interfaceMapa.mapSearchInput.setText("");
+        if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
+        atualizarPosicaoDoBotaoAlerta();
+        atualizarPosicaoDoBotaoCentralizar();
     }
 
     // Começa o modo de viagem e apresenta a primeira indicação da TomTom.
@@ -359,8 +416,11 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         indiceAtualDaRota = 0;
         interfaceMapa.mapSearchBar.setVisibility(View.GONE);
         interfaceMapa.searchSuggestions.setVisibility(View.GONE);
+        interfaceMapa.navigationBanner.setVisibility(View.VISIBLE);
+        interfaceMapa.btnDismissRoute.setVisibility(View.GONE);
         interfaceMapa.btnStartTrip.setVisibility(View.GONE);
         interfaceMapa.btnEndTrip.setVisibility(View.VISIBLE);
+        interfaceMapa.routePanel.post(this::atualizarPosicaoDoBotaoCentralizar);
         if (mapaTomTom != null && posicaoAtual != null) {
             mapaTomTom.moveCamera(new CameraOptions(posicaoAtual, 16.0, 0.0, 0.0, 45.0));
         }
@@ -375,7 +435,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             }
         }
 
-        interfaceMapa.routeGuidance.setText(indicacao);
+        interfaceMapa.navigationInstruction.setText(indicacao);
     }
 
     // Atualiza a distância restante e a próxima manobra conforme o GPS avança na rota.
@@ -425,12 +485,12 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         for (TomTomApi.Instrucao instrucao : rotaPlaneada.instrucoes) {
             double distanciaAteInstrucao = instrucao.distanciaDesdeInicio - percorridos;
             if (distanciaAteInstrucao > 20) {
-                interfaceMapa.routeGuidance.setText(getString(R.string.route_maneuver_format,
+                interfaceMapa.navigationInstruction.setText(getString(R.string.route_maneuver_format,
                         formatarDistancia(distanciaAteInstrucao), instrucao.mensagem));
                 return;
             }
         }
-        interfaceMapa.routeGuidance.setText(restantes < 60 ? R.string.route_arrival : R.string.route_keep_following);
+        interfaceMapa.navigationInstruction.setText(restantes < 60 ? R.string.route_arrival : R.string.route_keep_following);
     }
 
     private String formatarDistancia(double metros) {
@@ -449,7 +509,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         atualizarPosicaoDoBotaoAlerta();
         interfaceMapa.btnStartTrip.setVisibility(View.VISIBLE);
         interfaceMapa.btnEndTrip.setVisibility(View.GONE);
+        interfaceMapa.btnDismissRoute.setVisibility(View.VISIBLE);
         interfaceMapa.mapSearchBar.setVisibility(View.VISIBLE);
+        interfaceMapa.navigationBanner.setVisibility(View.GONE);
+        atualizarPosicaoDoBotaoCentralizar();
     }
 
     private void esconderTeclado() {
@@ -458,10 +521,36 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
     // Coloca a bússola logo abaixo do botão de menu.
     private void atualizarPosicaoDaBussola() {
-        if (vistaDoMapa == null) return;
-        int spacing = converterDpParaPixeis(72); // margem + altura do menu + espaço
-        vistaDoMapa.getCompassButton().setMargin(
-                new Margin(0, margemSuperiorDoSistema + spacing, margemFinalDoSistema + converterDpParaPixeis(16), 0));
+        if (interfaceMapa == null) return;
+        FrameLayout.LayoutParams parametros =
+                (FrameLayout.LayoutParams) interfaceMapa.btnCompass.getLayoutParams();
+        parametros.topMargin = margemSuperiorDoSistema + converterDpParaPixeis(72);
+        parametros.setMarginEnd(margemFinalDoSistema + converterDpParaPixeis(16));
+        interfaceMapa.btnCompass.setLayoutParams(parametros);
+    }
+
+    // Roda a seta para mostrar o norte e, ao tocar, volta a orientar o mapa para norte.
+    private void orientarMapaParaNorte() {
+        if (mapaTomTom == null) return;
+        CameraPosition camara = mapaTomTom.getCameraPosition();
+        mapaTomTom.moveCamera(new CameraOptions(
+                camara.getPosition(), camara.getZoom(), camara.getTilt(), 0.0, camara.getFieldOfView()));
+    }
+
+    // Mantém o botão à esquerda, alinhado ao centro com Reportar perigo.
+    private void atualizarPosicaoDoBotaoCentralizar() {
+        if (vistaDoMapa == null || interfaceMapa == null) return;
+        FrameLayout.LayoutParams parametros =
+                (FrameLayout.LayoutParams) interfaceMapa.btnCenterMap.getLayoutParams();
+        FrameLayout.LayoutParams parametrosAlerta =
+                (FrameLayout.LayoutParams) interfaceMapa.btnReportAlert.getLayoutParams();
+        parametros.gravity = Gravity.BOTTOM | Gravity.START;
+        parametros.leftMargin = margemEsquerdaDoSistema + converterDpParaPixeis(16);
+        parametros.rightMargin = 0;
+        int alturaAlerta = Math.max(interfaceMapa.btnReportAlert.getHeight(), converterDpParaPixeis(64));
+        int alturaBotao = Math.max(interfaceMapa.btnCenterMap.getHeight(), converterDpParaPixeis(48));
+        parametros.bottomMargin = parametrosAlerta.bottomMargin + (alturaAlerta - alturaBotao) / 2;
+        interfaceMapa.btnCenterMap.setLayoutParams(parametros);
     }
 
     // Converte um valor dp (density-independent pixels) em píxeis no ecrã.
@@ -552,7 +641,12 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     public void onMapReady(@NonNull TomTomMap map) {
         mapaTomTom = map;
         // Pede os nomes do mapa em português, independentemente do idioma do telemóvel.
-        mapaTomTom.setLanguage(new java.util.Locale("pt", "PT"));
+        mapaTomTom.setLanguage(java.util.Locale.forLanguageTag("pt-PT"));
+        mapaTomTom.addCameraChangeListener(() -> runOnUiThread(() -> {
+            if (mapaTomTom == null) return;
+            double rotacao = mapaTomTom.getCameraPosition().getRotation();
+            interfaceMapa.compassNeedle.setRotation((float) -rotacao);
+        }));
         atualizarPosicaoDaBussola();
 
         // Centro de reserva enquanto a localização do dispositivo é obtida.
@@ -580,7 +674,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void carregarAlertas() {
         if (aLerAlertas || apiAlertas == null || mapaTomTom == null) return;
         aLerAlertas = true;
-        apiAlertas.listar(new AlertasApi.Resposta<java.util.List<AlertaDTO>>() {
+        apiAlertas.listar(new AlertasApi.Resposta<>() {
             @Override public void aoConcluir(java.util.List<AlertaDTO> alertas) {
                 aLerAlertas = false;
                 erroDeAlertasApresentado = false;
@@ -645,7 +739,8 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         }
         esconderTeclado();
         interfaceMapa.searchSuggestions.setVisibility(View.GONE);
-        View formulario = getLayoutInflater().inflate(R.layout.dialog_criar_alerta, null);
+        View formulario = getLayoutInflater().inflate(
+                R.layout.dialog_criar_alerta, interfaceMapa.getRoot(), false);
         BottomSheetDialog dialogo = new BottomSheetDialog(this);
         dialogo.setContentView(formulario);
         dialogoDeAlerta = dialogo;
@@ -699,7 +794,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             confirmar.setText(R.string.alert_saving);
             fechar.setEnabled(false);
             for (MaterialButton opcao : opcoes) opcao.setEnabled(false);
-            apiAlertas.criar(alerta, new AlertasApi.Resposta<String>() {
+            apiAlertas.criar(alerta, new AlertasApi.Resposta<>() {
                 @Override public void aoConcluir(String id) {
                     if (isFinishing() || isDestroyed()) return;
                     dialogo.dismiss();
@@ -753,7 +848,8 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void mostrarDetalhesDoAlerta(AlertaDTO alerta) {
         CategoriaAlerta categoria = CategoriaAlerta.procurar(alerta.getCategoriaId());
         if (categoria == null) return;
-        View detalhes = getLayoutInflater().inflate(R.layout.dialog_detalhes_alerta, null);
+        View detalhes = getLayoutInflater().inflate(
+                R.layout.dialog_detalhes_alerta, interfaceMapa.getRoot(), false);
         BottomSheetDialog painel = new BottomSheetDialog(this);
         painel.setContentView(detalhes);
         dialogoDeAlerta = painel;
@@ -762,14 +858,14 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         ((TextView) detalhes.findViewById(R.id.gravidade_detalhe_alerta)).setText(nomeDaGravidade(alerta.getGravidade()));
         // Formato português de Portugal, com dia/mês/ano e horas de 24 horas.
         java.text.SimpleDateFormat formato = new java.text.SimpleDateFormat(
-                "dd/MM/yyyy 'às' HH:mm", new java.util.Locale("pt", "PT"));
+                "dd/MM/yyyy 'às' HH:mm", java.util.Locale.forLanguageTag("pt-PT"));
         ((TextView) detalhes.findViewById(R.id.data_detalhe_alerta))
                 .setText(formato.format(new java.util.Date(alerta.getDataCriacao())));
         TextView nomeAutor = detalhes.findViewById(R.id.nome_autor_alerta);
         detalhes.findViewById(R.id.fechar_cabecalho_alerta).setOnClickListener(vista -> painel.dismiss());
         detalhes.findViewById(R.id.fechar_detalhe_alerta).setOnClickListener(vista -> painel.dismiss());
         mostrarPainelInferior(painel);
-        apiAlertas.obterNomeDoAutor(alerta.getUtilizadorId(), new AlertasApi.Resposta<String>() {
+        apiAlertas.obterNomeDoAutor(alerta.getUtilizadorId(), new AlertasApi.Resposta<>() {
             @Override public void aoConcluir(String nome) {
                 if (!painel.isShowing() || isFinishing() || isDestroyed()) return;
                 if (nome.isEmpty()) nomeAutor.setText(R.string.alert_author_unavailable);

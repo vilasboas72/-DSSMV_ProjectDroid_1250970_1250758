@@ -5,6 +5,8 @@
     <string name="btn_login">Entrar</string>
     <string name="title_activity_map">Mapa</string>
     <string name="map_menu_description">Abrir menu do mapa</string>
+    <string name="compass_description">Repor a orientação do mapa</string>
+    <string name="center_map_description">Centrar no utilizador</string>
     <string name="favorite_zones">Zonas favoritas</string>
     <string name="favorite_zones_unavailable">As zonas favoritas ainda não estão disponíveis.</string>
     <string name="logout">Terminar sessão</string>
@@ -23,8 +25,9 @@
     <string name="registo_create_account">Criar conta</string>
     <string name="registo_has_account">Já tens uma conta?</string>
     <string name="registo_back_to_login">Voltar a iniciar sessão</string>
-    <string name="search_map">Pesquisar no mapa</string>
-    <string name="search_description">Pesquisar</string>
+    <string name="search_map">Pesquisar</string>
+    <string name="search_description">Pesquisar no mapa</string>
+    <string name="clear_search">Limpar pesquisa</string>
     <string name="saved_session_title">Sessão iniciada</string>
     <string name="saved_session_message">Queres continuar com a conta %1$s?</string>
     <string name="continue_session">Continuar</string>
@@ -58,6 +61,9 @@
     <string name="route_arrival">Chegaste ao destino</string>
     <string name="route_keep_following">Continua pela rota até ao destino.</string>
     <string name="route_summary_format">%1$s · cerca de %2$s min</string>
+    <string name="dismiss_route">Cancelar rota</string>
+    <string name="close_symbol">×</string>
+    <string name="navigation_next">PRÓXIMA INDICAÇÃO</string>
     <string name="alert_create">Reportar perigo</string>
     <string name="alert_save">Reportar</string>
     <string name="alert_cancel">Cancelar</string>
