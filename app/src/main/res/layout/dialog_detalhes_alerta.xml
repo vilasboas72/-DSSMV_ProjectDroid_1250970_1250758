@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="@drawable/bg_alert_sheet">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="20dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageView android:id="@+id/icone_detalhe_alerta" android:layout_width="52dp"
+                android:layout_height="52dp" android:importantForAccessibility="no"
+                android:layout_marginEnd="12dp" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:text="@string/alert_details_title" android:textColor="#555555" android:textSize="14sp" />
+                <TextView android:id="@+id/categoria_detalhe_alerta" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:textColor="#171717" android:textSize="24sp"
+                    android:textStyle="bold" android:accessibilityHeading="true" />
+            </LinearLayout>
+            <ImageButton android:id="@+id/fechar_cabecalho_alerta" android:layout_width="48dp"
+                android:layout_height="48dp" android:padding="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_close_clear_cancel" app:tint="#171717"
+                android:contentDescription="@string/close" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="24dp" android:padding="12dp" android:background="#F3F3F3"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:text="@string/alert_severity_label" android:textColor="#555555" android:textSize="16sp" />
+            <TextView android:id="@+id/gravidade_detalhe_alerta" android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:textColor="#171717" android:textStyle="bold"
+                android:textSize="18sp" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" android:text="@string/alert_date_label"
+            android:textColor="#555555" android:textSize="14sp" />
+        <TextView android:id="@+id/data_detalhe_alerta" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:textColor="#171717" android:textSize="18sp" />
+        <View android:layout_width="match_parent" android:layout_height="1dp"
+            android:layout_marginTop="16dp" android:background="#E5E5E5" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" android:text="@string/alert_author_label"
+            android:textColor="#555555" android:textSize="14sp" />
+        <TextView android:id="@+id/nome_autor_alerta" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_marginTop="4dp"
+            android:text="@string/alert_author_loading" android:textColor="#171717"
+            android:textSize="18sp" android:textStyle="bold" android:accessibilityLiveRegion="polite" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/fechar_detalhe_alerta"
+            android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="24dp"
+            android:text="@string/close" android:textSize="18sp" android:textAllCaps="false"
+            android:textColor="#FFFFFF" app:backgroundTint="#171717" app:cornerRadius="8dp" />
+    </LinearLayout>
+</ScrollView>

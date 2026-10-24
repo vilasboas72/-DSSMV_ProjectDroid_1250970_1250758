@@ -22,7 +22,7 @@ import java.util.concurrent.Executors;
 
 /** Faz as pesquisas de locais e pede rotas à API HTTP da TomTom. */
 final class TomTomApi {
-    interface Callback<T> {
+    interface Resposta<T> {
         void aoConcluir(T resultado);
         void aoFalhar();
     }
@@ -60,7 +60,7 @@ final class TomTomApi {
     }
 
     private final String chaveApi;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService tarefasDeRede = Executors.newSingleThreadExecutor();
     private final Handler gestorPrincipal = new Handler(Looper.getMainLooper());
 
     TomTomApi(String chaveApi) {
@@ -68,8 +68,8 @@ final class TomTomApi {
     }
 
     // Procura sugestões, dando prioridade à posição atual quando já está disponível.
-    void pesquisarLocais(String texto, GeoPoint posicao, Callback<List<Local>> callback) {
-        executor.execute(() -> {
+    void pesquisarLocais(String texto, GeoPoint posicao, Resposta<List<Local>> respostaPedido) {
+        tarefasDeRede.execute(() -> {
             try {
                 String url = "https://api.tomtom.com/search/2/search/" + Uri.encode(texto)
                         + ".json?key=" + Uri.encode(chaveApi)
@@ -96,16 +96,16 @@ final class TomTomApi {
                                 ponto.optDouble("lat"), ponto.optDouble("lon")));
                     }
                 }
-                entregar(callback, locais);
+                entregar(respostaPedido, locais);
             } catch (Exception e) {
-                entregarFalha(callback);
+                entregarFalha(respostaPedido);
             }
         });
     }
 
     // Calcula uma rota de carro e pede instruções em português.
-    void calcularRota(GeoPoint origem, Local destino, Callback<Rota> callback) {
-        executor.execute(() -> {
+    void calcularRota(GeoPoint origem, Local destino, Resposta<Rota> respostaPedido) {
+        tarefasDeRede.execute(() -> {
             try {
                 String pontos = String.format(Locale.US, "%f,%f:%f,%f",
                         origem.getLatitude(), origem.getLongitude(), destino.latitude, destino.longitude);
@@ -152,9 +152,9 @@ final class TomTomApi {
                         }
                     }
                 }
-                entregar(callback, rota);
+                entregar(respostaPedido, rota);
             } catch (Exception e) {
-                entregarFalha(callback);
+                entregarFalha(respostaPedido);
             }
         });
     }
@@ -169,7 +169,7 @@ final class TomTomApi {
     }
 
     void fechar() {
-        executor.shutdownNow();
+        tarefasDeRede.shutdownNow();
     }
 
     private JSONObject pedirJson(String endereco) throws Exception {
@@ -187,11 +187,11 @@ final class TomTomApi {
         }
     }
 
-    private <T> void entregar(Callback<T> callback, T resultado) {
-        gestorPrincipal.post(() -> callback.aoConcluir(resultado));
+    private <T> void entregar(Resposta<T> respostaPedido, T resultado) {
+        gestorPrincipal.post(() -> respostaPedido.aoConcluir(resultado));
     }
 
-    private void entregarFalha(Callback<?> callback) {
-        gestorPrincipal.post(callback::aoFalhar);
+    private void entregarFalha(Resposta<?> respostaPedido) {
+        gestorPrincipal.post(respostaPedido::aoFalhar);
     }
 }

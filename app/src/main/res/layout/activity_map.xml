@@ -125,6 +125,20 @@
                 app:strokeColor="#DADCE0" />
     </LinearLayout>
 
+    <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_report_alert"
+            android:layout_width="wrap_content"
+            android:layout_height="64dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:minWidth="160dp"
+            android:text="@string/alert_create"
+            android:textSize="18sp"
+            android:textAllCaps="false"
+            android:elevation="8dp"
+            app:backgroundTint="#171717"
+            app:cornerRadius="8dp" />
+
     <ImageButton
             android:id="@+id/btn_map_menu"
             android:layout_width="48dp"
