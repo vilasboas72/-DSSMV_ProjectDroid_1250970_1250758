@@ -94,6 +94,19 @@ final class AlertasApi {
         });
     }
 
+    // Remove o perigo da Firebase usando o seu identificador.
+    void eliminar(String alertaId, Resposta<Boolean> respostaPedido) {
+        tarefasDeRede.execute(() -> {
+            try {
+                String endereco = URL_BASE + "Alerta/" + Uri.encode(alertaId) + ".json";
+                pedir(endereco, "DELETE", null);
+                entregar(() -> respostaPedido.aoConcluir(true));
+            } catch (Exception erro) {
+                falhar(respostaPedido, erro);
+            }
+        });
+    }
+
     /** Lê apenas o nome deste utilizador, sem obter emails ou palavras-passe. */
     void obterNomeDoAutor(String idUtilizador, Resposta<String> respostaPedido) {
         tarefasDeRede.execute(() -> {

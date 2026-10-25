@@ -24,6 +24,7 @@ import android.widget.Toast;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.snackbar.Snackbar;
 import android.widget.TextView;
 import android.app.Dialog;
 import androidx.annotation.NonNull;
@@ -39,6 +40,8 @@ import com.tomtom.sdk.map.display.MapOptions;
 import com.tomtom.sdk.map.display.TomTomMap;
 import com.tomtom.sdk.map.display.camera.CameraOptions;
 import com.tomtom.sdk.map.display.camera.CameraPosition;
+import com.tomtom.sdk.map.display.circle.CircleOptions;
+import com.tomtom.sdk.map.display.circle.Radius;
 import com.tomtom.sdk.map.display.common.screen.Padding;
 import com.tomtom.sdk.map.display.common.WidthByZoom;
 import com.tomtom.sdk.map.display.polyline.PolylineOptions;
@@ -64,6 +67,15 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private TomTomMap mapaTomTom;
     private Marker marcadorDaLocalizacao;
     private Polyline linhaDaRota;
+    private GeoPoint centroZonaFavoritaPendente;
+    private boolean circuloZonaFavoritaVisivel;
+    private int quantidadeCirculosDesenhados;
+    private final java.util.List<ZonaFavorita> zonasExibidasNoMapa = new java.util.ArrayList<>();
+    private ZonasFavoritasApi apiZonasFavoritas;
+    private final java.util.List<ZonaFavorita> zonasFavoritas = new java.util.ArrayList<>();
+    private final java.util.Set<String> idsDeAlertasConhecidos = new java.util.HashSet<>();
+    private boolean primeiraLeituraDeAlertas = true;
+    private Snackbar avisoAlertaVisivel;
     private LocationManager gestorDeLocalizacao;
     private LocationListener ouvinteDeLocalizacao;
     private GeoPoint posicaoAtual;
@@ -89,6 +101,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private boolean aLerAlertas;
     private boolean erroDeAlertasApresentado;
     private Dialog dialogoDeAlerta;
+    private Dialog painelDetalheAlerta;
     private final java.util.Map<String, AlertaDTO> alertasNoMapa = new java.util.HashMap<>();
     private final java.util.List<Marker> marcadoresDeAlertas = new java.util.ArrayList<>();
     private final Handler atualizacaoAlertas = new Handler(Looper.getMainLooper());
@@ -113,6 +126,8 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             return;
         }
         apiAlertas = new AlertasApi();
+        apiZonasFavoritas = new ZonasFavoritasApi();
+        lerZonaFavoritaDoIntent(getIntent());
 
         interfaceMapa = ActivityMapBinding.inflate(getLayoutInflater());
         setContentView(interfaceMapa.getRoot());
@@ -223,13 +238,31 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         interfaceMapa.btnMapMenu.setOnClickListener(view -> {
             PopupMenu menu = new PopupMenu(this, interfaceMapa.btnMapMenu, Gravity.END);
             menu.inflate(R.menu.map_menu);
+            menu.getMenu().findItem(R.id.action_toggle_zone_circle)
+                    .setVisible(centroZonaFavoritaPendente != null);
+            menu.getMenu().findItem(R.id.action_toggle_zone_circle).setTitle(
+                    circuloZonaFavoritaVisivel
+                            ? "Ocultar círculo da zona" : "Mostrar círculo da zona");
             menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == R.id.action_favorite_zones) {
-                    new AlertDialog.Builder(this)
-                            .setTitle(R.string.favorite_zones)
-                            .setMessage(R.string.favorite_zones_unavailable)
-                            .setPositiveButton(R.string.close, null)
-                            .show();
+                    Intent intent = new Intent(this, ZonasFavoritasActivity.class);
+                    if (posicaoAtual != null) {
+                        intent.putExtra("latitude_atual", posicaoAtual.getLatitude());
+                        intent.putExtra("longitude_atual", posicaoAtual.getLongitude());
+                    }
+                    startActivity(intent);
+                    return true;
+                }
+                if (item.getItemId() == R.id.action_toggle_zone_circle) {
+                    if (mapaTomTom == null || centroZonaFavoritaPendente == null) return false;
+                    if (circuloZonaFavoritaVisivel) {
+                        removerCirculosDasZonas();
+                        circuloZonaFavoritaVisivel = false;
+                    } else {
+                        desenharCirculosDasZonas(zonasExibidasNoMapa);
+                    }
+                    item.setTitle(circuloZonaFavoritaVisivel
+                            ? "Ocultar círculo da zona" : "Mostrar círculo da zona");
                     return true;
                 }
                 if (item.getItemId() == R.id.action_logout) {
@@ -630,7 +663,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         pararAtualizacoesDaLocalizacao();
         atualizacaoAlertas.removeCallbacksAndMessages(null);
         if (dialogoDeAlerta != null) dialogoDeAlerta.dismiss();
+        if (painelDetalheAlerta != null) painelDetalheAlerta.dismiss();
+        if (avisoAlertaVisivel != null) avisoAlertaVisivel.dismiss();
         if (apiAlertas != null) apiAlertas.fechar();
+        if (apiZonasFavoritas != null) apiZonasFavoritas.fechar();
         if (apiTomTom != null) apiTomTom.fechar();
         if (vistaDoMapa != null) vistaDoMapa.onDestroy();
         super.onDestroy();
@@ -649,10 +685,15 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         }));
         atualizarPosicaoDaBussola();
 
-        // Centro de reserva enquanto a localização do dispositivo é obtida.
-        GeoPoint isep = new GeoPoint(41.1779, -8.6080);
-        CameraOptions opcoesDaCamara = new CameraOptions(isep, 14.0, 0.0, 0.0, 45.0);
-        mapaTomTom.moveCamera(opcoesDaCamara);
+        if (centroZonaFavoritaPendente != null) {
+            // Mantém a zona escolhida no ecrã quando o GPS receber a primeira posição.
+            mapaCentradoNoUtilizador = true;
+            mostrarZonasFavoritasNoMapa(zonasExibidasNoMapa);
+        } else {
+            // Centro de reserva enquanto a localização do dispositivo é obtida.
+            GeoPoint isep = new GeoPoint(41.1779, -8.6080);
+            mapaTomTom.moveCamera(new CameraOptions(isep, 14.0, 0.0, 0.0, 45.0));
+        }
 
         mapaTomTom.addMarkerClickListener(marcador -> {
             String tag = marcador.getTag();
@@ -660,11 +701,150 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             AlertaDTO alerta = alertasNoMapa.get(tag.substring("alerta:".length()));
             if (alerta != null) mostrarDetalhesDoAlerta(alerta);
         });
+        carregarZonasFavoritas();
         iniciarLeituraDeAlertas();
 
         pedirLocalizacaoDoUtilizador();
     }
 
+    private void lerZonaFavoritaDoIntent(Intent intent) {
+        double[] latitudes = intent.getDoubleArrayExtra("zonas_latitudes");
+        double[] longitudes = intent.getDoubleArrayExtra("zonas_longitudes");
+        int[] raios = intent.getIntArrayExtra("zonas_raios");
+        String[] nomes = intent.getStringArrayExtra("zonas_nomes");
+        if (latitudes != null && longitudes != null && raios != null && nomes != null
+                && latitudes.length == longitudes.length && latitudes.length == raios.length
+                && latitudes.length == nomes.length) {
+            for (int indice = 0; indice < latitudes.length; indice++) {
+                if (!Double.isFinite(latitudes[indice]) || !Double.isFinite(longitudes[indice])
+                        || Math.abs(latitudes[indice]) > 90 || Math.abs(longitudes[indice]) > 180
+                        || raios[indice] <= 0) continue;
+                zonasExibidasNoMapa.add(new ZonaFavorita("", utilizadorLogado,
+                        nomes[indice], "", latitudes[indice], longitudes[indice], raios[indice]));
+            }
+        }
+        if (zonasExibidasNoMapa.isEmpty()) {
+            if (!intent.hasExtra("zona_latitude") || !intent.hasExtra("zona_longitude")) return;
+            double latitude = intent.getDoubleExtra("zona_latitude", Double.NaN);
+            double longitude = intent.getDoubleExtra("zona_longitude", Double.NaN);
+            int raioKm = intent.getIntExtra("zona_raio_km", 0);
+            if (!Double.isFinite(latitude) || !Double.isFinite(longitude)
+                    || Math.abs(latitude) > 90 || Math.abs(longitude) > 180
+                    || raioKm <= 0) return;
+            zonasExibidasNoMapa.add(new ZonaFavorita("", utilizadorLogado,
+                    intent.getStringExtra("zona_nome"), "", latitude, longitude, raioKm));
+        }
+        ZonaFavorita primeira = zonasExibidasNoMapa.get(0);
+        centroZonaFavoritaPendente = new GeoPoint(primeira.latitude, primeira.longitude);
+    }
+
+    // Mostra todas as zonas selecionadas e ajusta o mapa para as enquadrar.
+    private void mostrarZonasFavoritasNoMapa(java.util.List<ZonaFavorita> zonas) {
+        if (mapaTomTom == null || zonas.isEmpty()) return;
+        desenharCirculosDasZonas(zonas);
+        double latitudeMedia = 0;
+        double longitudeMedia = 0;
+        for (ZonaFavorita zona : zonas) {
+            latitudeMedia += zona.latitude;
+            longitudeMedia += zona.longitude;
+        }
+        GeoPoint centro = new GeoPoint(latitudeMedia / zonas.size(), longitudeMedia / zonas.size());
+        double maiorExtensaoKm = 0.5;
+        for (ZonaFavorita zona : zonas) {
+            float[] distancia = new float[1];
+            Location.distanceBetween(centro.getLatitude(), centro.getLongitude(),
+                    zona.latitude, zona.longitude, distancia);
+            maiorExtensaoKm = Math.max(maiorExtensaoKm,
+                    distancia[0] / 1000.0 + zona.raioKm);
+        }
+        double zoom = Math.max(3.0, Math.min(16.0,
+                15.0 - Math.log(maiorExtensaoKm * 2.0) / Math.log(2.0)));
+        mapaTomTom.moveCamera(new CameraOptions(centro, zoom, 0.0, 0.0, 45.0));
+        Toast.makeText(this, zonas.size() == 1
+                ? zonas.get(0).nome + " · " + zonas.get(0).raioKm + " km"
+                : zonas.size() + " zonas favoritas no mapa", Toast.LENGTH_SHORT).show();
+    }
+
+    // Desenha todas as zonas a azul muito suave e transparente.
+    private void desenharCirculosDasZonas(java.util.List<ZonaFavorita> zonas) {
+        if (mapaTomTom == null || zonas == null || zonas.isEmpty()) return;
+        removerCirculosDasZonas();
+        for (int indice = 0; indice < zonas.size(); indice++) {
+            ZonaFavorita zona = zonas.get(indice);
+            Radius raio = new Radius(zona.raioKm * 1000.0, 0, null);
+            CircleOptions opcoes = new CircleOptions(
+                    new GeoPoint(zona.latitude, zona.longitude), raio,
+                    Color.argb(24, 66, 133, 244), Color.argb(95, 66, 133, 244),
+                    2.0, false, "zona_favorita_" + indice);
+            mapaTomTom.addCircle(opcoes);
+        }
+        quantidadeCirculosDesenhados = zonas.size();
+        circuloZonaFavoritaVisivel = true;
+    }
+
+    private void removerCirculosDasZonas() {
+        if (mapaTomTom == null) return;
+        mapaTomTom.removeCircles("zona_favorita");
+        for (int indice = 0; indice < quantidadeCirculosDesenhados; indice++) {
+            mapaTomTom.removeCircles("zona_favorita_" + indice);
+        }
+        quantidadeCirculosDesenhados = 0;
+    }
+
+    private void carregarZonasFavoritas() {
+        apiZonasFavoritas.listar(utilizadorLogado, new ZonasFavoritasApi.Resposta<>() {
+            @Override public void aoConcluir(java.util.List<ZonaFavorita> zonas) {
+                if (isFinishing() || isDestroyed()) return;
+                zonasFavoritas.clear();
+                zonasFavoritas.addAll(zonas);
+            }
+
+            @Override public void aoFalhar() {
+                // Se a rede falhar, o mapa continua a funcionar sem avisos de zonas.
+            }
+        });
+    }
+
+    // O mapa consulta os alertas a cada 30 segundos enquanto está aberto.
+    private void verificarNovosAlertasNasZonas(java.util.List<AlertaDTO> alertas) {
+        if (primeiraLeituraDeAlertas) {
+            for (AlertaDTO alerta : alertas) idsDeAlertasConhecidos.add(alerta.getId());
+            primeiraLeituraDeAlertas = false;
+            return; // Os alertas antigos não aparecem como novos avisos.
+        }
+
+        StringBuilder avisos = new StringBuilder();
+        for (AlertaDTO alerta : alertas) {
+            if (!idsDeAlertasConhecidos.add(alerta.getId())) continue;
+            for (ZonaFavorita zona : zonasFavoritas) {
+                double distancia = medirDistanciaEmMetros(
+                        alerta.getLatitude(), alerta.getLongitude(),
+                        zona.latitude, zona.longitude);
+                if (distancia <= zona.raioKm * 1000.0) {
+                    CategoriaAlerta categoria = CategoriaAlerta.procurar(alerta.getCategoriaId());
+                    String nomePerigo = categoria == null
+                            ? getString(R.string.alert_details_title) : getString(categoria.nome);
+                    if (avisos.length() > 0) avisos.append("\n");
+                    avisos.append(resumoDoAlerta(alerta, nomePerigo));
+                    break;
+                }
+            }
+        }
+        if (avisos.length() > 0) mostrarAvisoDeZona(avisos.toString());
+    }
+
+    private double medirDistanciaEmMetros(double lat1, double lon1, double lat2, double lon2) {
+        double diferencaLat = Math.toRadians(lat2 - lat1);
+        double diferencaLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(diferencaLat / 2) * Math.sin(diferencaLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(diferencaLon / 2) * Math.sin(diferencaLon / 2);
+        return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    private void mostrarAvisoDeZona(String avisos) {
+        mostrarSnackbarDoAlerta(avisos);
+    }
     private void iniciarLeituraDeAlertas() {
         atualizacaoAlertas.removeCallbacks(atualizarAlertasPeriodicamente);
         if (mapaVisivel) atualizacaoAlertas.post(atualizarAlertasPeriodicamente);
@@ -679,6 +859,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 aLerAlertas = false;
                 erroDeAlertasApresentado = false;
                 if (!mapaVisivel || isFinishing() || isDestroyed()) return;
+                verificarNovosAlertasNasZonas(alertas);
                 for (Marker marcador : marcadoresDeAlertas) marcador.remove();
                 marcadoresDeAlertas.clear();
                 alertasNoMapa.clear();
@@ -844,32 +1025,42 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 : "media".equals(gravidade) ? R.string.alert_medium : R.string.alert_low);
     }
 
-    /** Apresenta a ocorrência e consulta o nome do autor a partir do identificador. */
+    /** Abre os detalhes completos quando o utilizador toca num marcador. */
     private void mostrarDetalhesDoAlerta(AlertaDTO alerta) {
         CategoriaAlerta categoria = CategoriaAlerta.procurar(alerta.getCategoriaId());
         if (categoria == null) return;
+        if (avisoAlertaVisivel != null) avisoAlertaVisivel.dismiss();
         View detalhes = getLayoutInflater().inflate(
                 R.layout.dialog_detalhes_alerta, interfaceMapa.getRoot(), false);
         BottomSheetDialog painel = new BottomSheetDialog(this);
         painel.setContentView(detalhes);
-        dialogoDeAlerta = painel;
-        ((android.widget.ImageView) detalhes.findViewById(R.id.icone_detalhe_alerta)).setImageResource(categoria.icone);
+        painelDetalheAlerta = painel;
+        ((android.widget.ImageView) detalhes.findViewById(R.id.icone_detalhe_alerta))
+                .setImageResource(categoria.icone);
         ((TextView) detalhes.findViewById(R.id.categoria_detalhe_alerta)).setText(categoria.nome);
-        ((TextView) detalhes.findViewById(R.id.gravidade_detalhe_alerta)).setText(nomeDaGravidade(alerta.getGravidade()));
-        // Formato português de Portugal, com dia/mês/ano e horas de 24 horas.
+        ((TextView) detalhes.findViewById(R.id.gravidade_detalhe_alerta))
+                .setText(nomeDaGravidade(alerta.getGravidade()));
         java.text.SimpleDateFormat formato = new java.text.SimpleDateFormat(
                 "dd/MM/yyyy 'às' HH:mm", java.util.Locale.forLanguageTag("pt-PT"));
         ((TextView) detalhes.findViewById(R.id.data_detalhe_alerta))
                 .setText(formato.format(new java.util.Date(alerta.getDataCriacao())));
+
         TextView nomeAutor = detalhes.findViewById(R.id.nome_autor_alerta);
+        View eliminar = detalhes.findViewById(R.id.eliminar_detalhe_alerta);
+        boolean eAutor = utilizadorLogado.equals(alerta.getUtilizadorId());
+        eliminar.setVisibility(eAutor ? View.VISIBLE : View.GONE);
+        eliminar.setOnClickListener(vista -> confirmarEliminacaoDoAlerta(alerta));
         detalhes.findViewById(R.id.fechar_cabecalho_alerta).setOnClickListener(vista -> painel.dismiss());
         detalhes.findViewById(R.id.fechar_detalhe_alerta).setOnClickListener(vista -> painel.dismiss());
+        painel.setOnDismissListener(dialogo -> {
+            if (painelDetalheAlerta == painel) painelDetalheAlerta = null;
+        });
         mostrarPainelInferior(painel);
         apiAlertas.obterNomeDoAutor(alerta.getUtilizadorId(), new AlertasApi.Resposta<>() {
             @Override public void aoConcluir(String nome) {
                 if (!painel.isShowing() || isFinishing() || isDestroyed()) return;
                 if (nome.isEmpty()) nomeAutor.setText(R.string.alert_author_unavailable);
-                else nomeAutor.setText(utilizadorLogado.equals(alerta.getUtilizadorId())
+                else nomeAutor.setText(eAutor
                         ? getString(R.string.alert_author_current_user, nome) : nome);
             }
             @Override public void aoFalhar(AlertasApi.Erro erro) {
@@ -878,6 +1069,70 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 }
             }
         });
+    }
+
+    private String resumoDoAlerta(AlertaDTO alerta, String tipo) {
+        String distancia = getString(R.string.alert_distance_unavailable);
+        if (posicaoAtual != null) {
+            float[] metros = new float[1];
+            Location.distanceBetween(posicaoAtual.getLatitude(), posicaoAtual.getLongitude(),
+                    alerta.getLatitude(), alerta.getLongitude(), metros);
+            if (metros[0] < 1000) {
+                distancia = Math.round(metros[0]) + " m";
+            } else {
+                distancia = String.format(java.util.Locale.forLanguageTag("pt-PT"), "%.1f km",
+                        metros[0] / 1000.0);
+            }
+        }
+        return getString(R.string.alert_summary, tipo, distancia, tempoDesde(alerta.getDataCriacao()));
+    }
+
+    private String tempoDesde(long dataCriacao) {
+        long minutos = Math.max(0, (System.currentTimeMillis() - dataCriacao) / 60000);
+        if (minutos < 1) return getString(R.string.alert_age_now);
+        if (minutos < 60) return getResources().getQuantityString(
+                R.plurals.alert_age_minutes, (int) minutos, minutos);
+        long horas = minutos / 60;
+        if (horas < 24) return getResources().getQuantityString(
+                R.plurals.alert_age_hours, (int) horas, horas);
+        long dias = horas / 24;
+        return getResources().getQuantityString(R.plurals.alert_age_days, (int) dias, dias);
+    }
+
+    /** Mostra avisos de novos perigos acima do botão Reportar perigo. */
+    private void mostrarSnackbarDoAlerta(String mensagem) {
+        if (avisoAlertaVisivel != null) avisoAlertaVisivel.dismiss();
+        avisoAlertaVisivel = Snackbar.make(interfaceMapa.btnReportAlert,
+                mensagem, Snackbar.LENGTH_INDEFINITE)
+                .setAnchorView(interfaceMapa.btnReportAlert);
+        avisoAlertaVisivel.setAction(R.string.alert_popup_close, vista -> avisoAlertaVisivel.dismiss());
+        avisoAlertaVisivel.show();
+    }
+
+    private void confirmarEliminacaoDoAlerta(AlertaDTO alerta) {
+        if (alerta == null || !utilizadorLogado.equals(alerta.getUtilizadorId())) return;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.alert_delete_title)
+                .setMessage(R.string.alert_delete_message)
+                .setNegativeButton(R.string.alert_cancel, null)
+                .setPositiveButton(R.string.alert_delete, (dialogo, escolha) ->
+                        apiAlertas.eliminar(alerta.getId(), new AlertasApi.Resposta<>() {
+                            @Override public void aoConcluir(Boolean resultado) {
+                                if (isFinishing() || isDestroyed()) return;
+                                if (painelDetalheAlerta != null) painelDetalheAlerta.dismiss();
+                                alertasNoMapa.remove(alerta.getId());
+                                carregarAlertas();
+                                Toast.makeText(MapActivity.this,
+                                        R.string.alert_delete_done, Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override public void aoFalhar(AlertasApi.Erro erro) {
+                                if (isFinishing() || isDestroyed()) return;
+                                Toast.makeText(MapActivity.this,
+                                        R.string.alert_delete_error, Toast.LENGTH_LONG).show();
+                            }
+                        }))
+                .show();
     }
 
     // Usa a localização se já houver permissão; caso contrário, pede-a ao utilizador.
