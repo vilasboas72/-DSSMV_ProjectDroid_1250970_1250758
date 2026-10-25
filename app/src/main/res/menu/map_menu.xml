@@ -4,6 +4,10 @@
             android:id="@+id/action_favorite_zones"
             android:title="@string/favorite_zones" />
     <item
+            android:id="@+id/action_toggle_zone_circle"
+            android:title="Ocultar círculo da zona"
+            android:visible="false" />
+    <item
             android:id="@+id/action_logout"
             android:title="@string/logout" />
 </menu>

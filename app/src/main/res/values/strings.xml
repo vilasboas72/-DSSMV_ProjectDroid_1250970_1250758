@@ -97,4 +97,59 @@
     <string name="alert_author_loading">A carregar o nome…</string>
     <string name="alert_author_unavailable">Nome não disponível</string>
     <string name="alert_author_current_user">%1$s (tu)</string>
+    <string name="alert_summary">%1$s · %2$s · %3$s</string>
+    <string name="alert_distance_unavailable">distância indisponível</string>
+    <string name="alert_popup_close">Fechar</string>
+    <string name="alert_delete">Eliminar</string>
+    <string name="alert_delete_title">Eliminar perigo</string>
+    <string name="alert_delete_message">Queres mesmo eliminar este perigo?</string>
+    <string name="alert_delete_done">Perigo eliminado.</string>
+    <string name="alert_delete_error">Não foi possível eliminar o perigo.</string>
+    <plurals name="alert_age_minutes">
+        <item quantity="one">há %d minuto</item>
+        <item quantity="other">há %d minutos</item>
+    </plurals>
+    <plurals name="alert_age_hours">
+        <item quantity="one">há %d hora</item>
+        <item quantity="other">há %d horas</item>
+    </plurals>
+    <plurals name="alert_age_days">
+        <item quantity="one">há %d dia</item>
+        <item quantity="other">há %d dias</item>
+    </plurals>
+    <string name="alert_age_now">agora</string>
+    <string name="back">Voltar</string>
+    <string name="zones_title">Zonas favoritas</string>
+    <string name="zones_description">Guarda locais importantes e escolhe a distância à sua volta.</string>
+    <string name="zones_create_new">Criar zona nova</string>
+    <string name="zones_loading">A carregar zonas…</string>
+    <string name="zones_empty">Ainda não tens zonas favoritas.</string>
+    <string name="zones_load_error">Não foi possível carregar as zonas favoritas.</string>
+    <string name="zone_dialog_title">Nova zona favorita</string>
+    <string name="zone_place_hint">Pesquisar local (ex.: ISEP)</string>
+    <string name="zone_name_hint">Nome da zona (ex.: Casa)</string>
+    <string name="zone_radius_label">Raio de alerta</string>
+    <string name="zone_cancel">Cancelar</string>
+    <string name="zone_save">Guardar zona</string>
+    <string name="zone_choose_location">Escolhe um local e indica o nome da zona.</string>
+    <string name="zone_saved">Zona favorita guardada.</string>
+    <string name="zone_save_error">Não foi possível guardar a zona. Verifica a ligação à internet.</string>
+    <string name="zone_list_item">%1$s · %2$d km\n%3$s</string>
+    <string name="zones_delete">Eliminar zonas</string>
+    <string name="zones_show_on_map">Mostrar no mapa</string>
+    <string name="zones_select_all">Selecionar todas</string>
+    <string name="zones_delete_selected">Eliminar selecionadas</string>
+    <string name="zones_show_selected">Mostrar selecionadas no mapa</string>
+    <string name="zones_continue">Continuar</string>
+    <string name="zones_delete_confirm_title">Eliminar zonas favoritas</string>
+    <string name="zones_delete_confirm_message">Queres eliminar as zonas selecionadas?</string>
+    <string name="zones_delete_done">Zonas eliminadas.</string>
+    <string name="zones_delete_error">Não foi possível eliminar algumas zonas.</string>
+    <string name="zones_select_first">Seleciona pelo menos uma zona.</string>
+    <string-array name="zone_radii">
+        <item>1 km</item>
+        <item>2 km</item>
+        <item>5 km</item>
+        <item>10 km</item>
+    </string-array>
 </resources>

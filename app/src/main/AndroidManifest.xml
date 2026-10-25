@@ -39,6 +39,10 @@
                 android:windowSoftInputMode="adjustResize"
                 android:exported="false"/>
 
+        <activity
+                android:name=".ZonasFavoritasActivity"
+                android:theme="@style/Theme.MaterialComponents.Light.NoActionBar"
+                android:exported="false" />
     </application>
 
 </manifest>

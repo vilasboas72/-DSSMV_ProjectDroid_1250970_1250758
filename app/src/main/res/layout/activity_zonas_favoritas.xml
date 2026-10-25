@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#F6F8FC"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+        <ImageButton
+                android:id="@+id/btn_voltar_zonas"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/back"
+                android:src="@android:drawable/ic_media_previous"
+                app:tint="#202124" />
+
+        <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/zones_title"
+                android:textColor="#202124"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="18dp"
+            android:text="@string/zones_description"
+            android:textColor="#5F6368"
+            android:textSize="15sp" />
+
+    <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_criar_zona"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:text="@string/zones_create_new"
+            android:textAllCaps="false"
+            android:textSize="16sp"
+            app:backgroundTint="#171717"
+            app:cornerRadius="12dp" />
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_selecionar_eliminar"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:text="@string/zones_delete"
+                android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_selecionar_mapa"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:text="@string/zones_show_on_map"
+                android:textAllCaps="false" />
+    </LinearLayout>
+
+    <LinearLayout
+            android:id="@+id/acoes_selecao_zonas"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_selecionar_todas"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/zones_select_all"
+                android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_confirmar_selecao_zonas"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/zones_continue"
+                android:textAllCaps="false"
+                app:backgroundTint="#171717"
+                app:cornerRadius="12dp" />
+    </LinearLayout>
+
+    <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="14dp"
+            android:layout_weight="1">
+
+        <ListView
+                android:id="@+id/lista_zonas"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_map_search"
+                android:divider="#E8EAED"
+                android:dividerHeight="1dp"
+                android:choiceMode="none"
+                android:visibility="gone" />
+
+        <TextView
+                android:id="@+id/zonas_mensagem"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:padding="24dp"
+                android:text="@string/zones_loading"
+                android:textColor="#5F6368"
+                android:textSize="16sp" />
+    </FrameLayout>
+</LinearLayout>
