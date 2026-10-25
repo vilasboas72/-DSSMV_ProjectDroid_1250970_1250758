@@ -1,15 +1,16 @@
 package com.example.roadguard;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.SparseBooleanArray;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -28,69 +29,94 @@ import com.tomtom.sdk.location.GeoPoint;
 
 import java.util.ArrayList;
 import java.util.List;
-import android.util.SparseBooleanArray;
 
 /** Mostra e permite criar zonas favoritas do utilizador com sessão iniciada. */
 public class ZonasFavoritasActivity extends AppCompatActivity {
+    private static final int SEM_SELECAO = 0;
+    private static final int SELECIONAR_PARA_ELIMINAR = 1;
+    private static final int SELECIONAR_PARA_MOSTRAR = 2;
+    private static final int[] RAIOS_DISPONIVEIS = {1, 2, 5, 10};
+
     private String utilizadorId;
     private GeoPoint posicaoAtual;
     private TomTomApi apiTomTom;
     private ZonasFavoritasApi apiZonas;
-    private ArrayAdapter<String> adaptadorZonas;
     private final List<ZonaFavorita> zonasGuardadas = new ArrayList<>();
     private final Handler gestorPesquisa = new Handler(Looper.getMainLooper());
     private Runnable pesquisaPendente;
+    // Número do pedido para ignorar respostas de pesquisas antigas.
     private int numeroDaPesquisa;
     private TextView mensagemLista;
     private ListView listaZonas;
     private View acoesSelecao;
     private MaterialButton botaoConfirmarSelecao;
-    private int modoSelecao;
+    private int modoSelecao = SEM_SELECAO;
+    private TomTomApi.Local localSelecionado;
+    private boolean aEscolherLocal;
 
     @Override
     protected void onCreate(@Nullable Bundle estado) {
         super.onCreate(estado);
-        utilizadorId = getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE)
-                .getString("UID_LOGADO", "");
-        if (utilizadorId.isEmpty()) {
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
-            return;
-        }
+        if (!lerUtilizadorLogado()) return;
 
         setContentView(R.layout.activity_zonas_favoritas);
         apiZonas = new ZonasFavoritasApi();
         posicaoAtual = obterPosicaoEnviada();
         apiTomTom = criarApiTomTom();
 
-        findViewById(R.id.btn_voltar_zonas).setOnClickListener(view -> finish());
-        findViewById(R.id.btn_criar_zona).setOnClickListener(view -> abrirCriacaoDeZona());
-        mensagemLista = findViewById(R.id.zonas_mensagem);
-        listaZonas = findViewById(R.id.lista_zonas);
-        adaptadorZonas = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
-        listaZonas.setAdapter(adaptadorZonas);
-        acoesSelecao = findViewById(R.id.acoes_selecao_zonas);
-        botaoConfirmarSelecao = findViewById(R.id.btn_confirmar_selecao_zonas);
-        findViewById(R.id.btn_selecionar_eliminar).setOnClickListener(view -> iniciarSelecao(1));
-        findViewById(R.id.btn_selecionar_mapa).setOnClickListener(view -> iniciarSelecao(2));
-        findViewById(R.id.btn_selecionar_todas).setOnClickListener(view -> selecionarTodas());
-        botaoConfirmarSelecao.setOnClickListener(view -> confirmarSelecao());
-        // Ao tocar numa zona, abre o mapa no local guardado.
-        listaZonas.setOnItemClickListener((lista, linha, posicao, id) -> {
-            if (modoSelecao != 0) return;
-            if (posicao >= zonasGuardadas.size()) return;
-            ZonaFavorita zona = zonasGuardadas.get(posicao);
-            Intent mapa = new Intent(this, MapActivity.class);
-            mapa.putExtra("zona_latitude", zona.latitude);
-            mapa.putExtra("zona_longitude", zona.longitude);
-            mapa.putExtra("zona_raio_km", zona.raioKm);
-            mapa.putExtra("zona_nome", zona.nome);
-            startActivity(mapa);
-            finish();
-        });
+        configurarLista();
+        configurarBotoes();
         carregarZonas();
     }
 
+    // Lê a sessão; sem utilizador, volta ao ecrã de entrada.
+    private boolean lerUtilizadorLogado() {
+        utilizadorId = getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE)
+                .getString("UID_LOGADO", "");
+        if (!utilizadorId.isEmpty()) return true;
+
+        startActivity(new Intent(this, MainActivity.class));
+        finish();
+        return false;
+    }
+
+    // Liga os botões às ações do ecrã.
+    private void configurarBotoes() {
+        findViewById(R.id.btn_voltar_zonas).setOnClickListener(view -> finish());
+        findViewById(R.id.btn_criar_zona).setOnClickListener(view -> abrirCriacaoDeZona());
+        findViewById(R.id.btn_selecionar_eliminar)
+                .setOnClickListener(view -> iniciarSelecao(SELECIONAR_PARA_ELIMINAR));
+        findViewById(R.id.btn_selecionar_mapa)
+                .setOnClickListener(view -> iniciarSelecao(SELECIONAR_PARA_MOSTRAR));
+        findViewById(R.id.btn_selecionar_todas).setOnClickListener(view -> selecionarTodas());
+        botaoConfirmarSelecao.setOnClickListener(view -> confirmarSelecao());
+    }
+
+    // Abre uma zona ao tocar na linha ou atualiza a seleção com caixas.
+    private void configurarLista() {
+        mensagemLista = findViewById(R.id.zonas_mensagem);
+        listaZonas = findViewById(R.id.lista_zonas);
+        acoesSelecao = findViewById(R.id.acoes_selecao_zonas);
+        botaoConfirmarSelecao = findViewById(R.id.btn_confirmar_selecao_zonas);
+        // Ao tocar numa zona, abre o mapa no local guardado.
+        listaZonas.setOnItemClickListener((lista, linha, posicao, id) -> {
+            if (modoSelecao != SEM_SELECAO) return;
+            if (posicao >= zonasGuardadas.size()) return;
+            abrirMapaComZona(zonasGuardadas.get(posicao));
+        });
+    }
+
+    private void abrirMapaComZona(ZonaFavorita zona) {
+        Intent mapa = new Intent(this, MapActivity.class);
+        mapa.putExtra("zona_latitude", zona.latitude);
+        mapa.putExtra("zona_longitude", zona.longitude);
+        mapa.putExtra("zona_raio_km", zona.raioKm);
+        mapa.putExtra("zona_nome", zona.nome);
+        startActivity(mapa);
+        finish();
+    }
+
+    // Recebe do mapa a localização atual para priorizar sugestões próximas.
     private GeoPoint obterPosicaoEnviada() {
         Intent dados = getIntent();
         if (!dados.hasExtra("latitude_atual") || !dados.hasExtra("longitude_atual")) return null;
@@ -101,6 +127,7 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         return new GeoPoint(latitude, longitude);
     }
 
+    // Lê a chave TomTom guardada nas definições Android da aplicação.
     private TomTomApi criarApiTomTom() {
         try {
             ApplicationInfo informacoes = getPackageManager().getApplicationInfo(
@@ -113,6 +140,7 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         }
     }
 
+    // GET: carrega as zonas e atualiza a lista apresentada no ecrã.
     private void carregarZonas() {
         mensagemLista.setText(R.string.zones_loading);
         mensagemLista.setVisibility(View.VISIBLE);
@@ -121,21 +149,12 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
             @Override public void aoConcluir(List<ZonaFavorita> zonas) {
                 zonasGuardadas.clear();
                 zonasGuardadas.addAll(zonas);
-                adaptadorZonas.clear();
-                for (ZonaFavorita zona : zonas) {
-                    adaptadorZonas.add(getString(R.string.zone_list_item,
-                            zona.nome, zona.raioKm, zona.local));
-                }
-                adaptadorZonas.notifyDataSetChanged();
                 boolean vazia = zonas.isEmpty();
-                if (vazia) {
-                    mensagemLista.setText(R.string.zones_empty);
-                } else {
-                    mensagemLista.setText("");
-                }
+                if (vazia) mensagemLista.setText(R.string.zones_empty);
+                else mensagemLista.setText("");
                 mensagemLista.setVisibility(vazia ? View.VISIBLE : View.GONE);
                 listaZonas.setVisibility(vazia ? View.GONE : View.VISIBLE);
-                atualizarModoSelecao();
+                atualizarLista();
             }
 
             @Override public void aoFalhar() {
@@ -146,28 +165,31 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         });
     }
 
+    // Ativa as caixas para eliminar zonas ou mostrá-las juntas no mapa.
     private void iniciarSelecao(int modo) {
-        modoSelecao = modoSelecao == modo ? 0 : modo;
+        modoSelecao = modoSelecao == modo ? SEM_SELECAO : modo;
         listaZonas.clearChoices();
-        atualizarModoSelecao();
+        atualizarLista();
     }
 
-    private void atualizarModoSelecao() {
-        boolean selecionar = modoSelecao != 0 && !zonasGuardadas.isEmpty();
-        listaZonas.setChoiceMode(selecionar ? ListView.CHOICE_MODE_MULTIPLE : ListView.CHOICE_MODE_NONE);
-        listaZonas.setAdapter(null);
-        adaptadorZonas = new ArrayAdapter<>(this,
-                selecionar ? android.R.layout.simple_list_item_multiple_choice
-                        : android.R.layout.simple_list_item_1);
+    // Troca as linhas da lista por linhas com caixas de seleção.
+    private void atualizarLista() {
+        boolean selecionar = modoSelecao != SEM_SELECAO && !zonasGuardadas.isEmpty();
+        int tipoLinha = selecionar ? android.R.layout.simple_list_item_multiple_choice
+                : android.R.layout.simple_list_item_1;
+        ArrayAdapter<String> adaptador = new ArrayAdapter<>(this, tipoLinha);
         for (ZonaFavorita zona : zonasGuardadas) {
-            adaptadorZonas.add(getString(R.string.zone_list_item, zona.nome, zona.raioKm, zona.local));
+            adaptador.add(getString(R.string.zone_list_item, zona.nome, zona.raioKm, zona.local));
         }
-        listaZonas.setAdapter(adaptadorZonas);
+        listaZonas.setChoiceMode(selecionar
+                ? ListView.CHOICE_MODE_MULTIPLE : ListView.CHOICE_MODE_NONE);
+        listaZonas.setAdapter(adaptador);
         acoesSelecao.setVisibility(selecionar ? View.VISIBLE : View.GONE);
-        botaoConfirmarSelecao.setText(modoSelecao == 1
+        botaoConfirmarSelecao.setText(modoSelecao == SELECIONAR_PARA_ELIMINAR
                 ? R.string.zones_delete_selected : R.string.zones_show_selected);
     }
 
+    // Marca todas as zonas; se já estiverem marcadas, limpa a seleção.
     private void selecionarTodas() {
         boolean todasMarcadas = true;
         for (int indice = 0; indice < zonasGuardadas.size(); indice++) {
@@ -181,6 +203,7 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         }
     }
 
+    // Devolve os objetos correspondentes às caixas marcadas.
     private List<ZonaFavorita> zonasSelecionadas() {
         List<ZonaFavorita> selecionadas = new ArrayList<>();
         SparseBooleanArray marcadas = listaZonas.getCheckedItemPositions();
@@ -190,13 +213,14 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         return selecionadas;
     }
 
+    // Executa a ação escolhida depois de verificar que há zonas marcadas.
     private void confirmarSelecao() {
         List<ZonaFavorita> selecionadas = zonasSelecionadas();
         if (selecionadas.isEmpty()) {
             Toast.makeText(this, R.string.zones_select_first, Toast.LENGTH_SHORT).show();
             return;
         }
-        if (modoSelecao == 2) {
+        if (modoSelecao == SELECIONAR_PARA_MOSTRAR) {
             abrirMapaComZonas(selecionadas);
             return;
         }
@@ -208,6 +232,7 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Envia as coordenadas e os raios ao mapa para desenhar vários círculos.
     private void abrirMapaComZonas(List<ZonaFavorita> zonas) {
         double[] latitudes = new double[zonas.size()];
         double[] longitudes = new double[zonas.size()];
@@ -229,6 +254,7 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         finish();
     }
 
+    // DELETE: apaga as zonas escolhidas e atualiza a lista no fim.
     private void eliminarZonas(List<ZonaFavorita> zonas) {
         botaoConfirmarSelecao.setEnabled(false);
         int[] restantes = {zonas.size()};
@@ -241,8 +267,9 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
                     terminarUmaEliminacao();
                 }
                 private void terminarUmaEliminacao() {
+                    // Só atualiza o ecrã depois de todos os pedidos terminarem.
                     if (--restantes[0] != 0 || isFinishing() || isDestroyed()) return;
-                    modoSelecao = 0;
+                    modoSelecao = SEM_SELECAO;
                     Toast.makeText(ZonasFavoritasActivity.this,
                             houveErro[0] ? R.string.zones_delete_error : R.string.zones_delete_done,
                             Toast.LENGTH_SHORT).show();
@@ -252,6 +279,7 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         }
     }
 
+    // Abre o formulário de pesquisa, nome e raio para criar uma zona.
     private void abrirCriacaoDeZona() {
         if (apiTomTom == null) {
             Toast.makeText(this, R.string.tomtom_key_missing, Toast.LENGTH_LONG).show();
@@ -272,113 +300,154 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
                 this, android.R.layout.simple_list_item_1);
         List<TomTomApi.Local> locais = new ArrayList<>();
         sugestoes.setAdapter(adaptadorSugestoes);
-        ArrayAdapter<CharSequence> adaptadorRaios = ArrayAdapter.createFromResource(
-                this, R.array.zone_radii, android.R.layout.simple_spinner_item);
-        adaptadorRaios.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        raio.setAdapter(adaptadorRaios);
+        configurarOpcoesDeRaio(raio);
         guardar.setEnabled(false);
-        final TomTomApi.Local[] localSelecionado = {null};
-        final boolean[] aEscolherLocal = {false};
+        localSelecionado = null;
+        aEscolherLocal = false;
 
+        configurarPesquisaDeLocal(pesquisa, sugestoes, guardar, dialogo,
+                locais, adaptadorSugestoes);
+        configurarAcoesDoFormulario(pesquisa, nome, raio, sugestoes, locais,
+                guardar, cancelar, dialogo);
+        dialogo.show();
+    }
+
+    // Preenche a lista de raios disponíveis no formulário.
+    private void configurarOpcoesDeRaio(Spinner raio) {
+        ArrayAdapter<CharSequence> adaptador = ArrayAdapter.createFromResource(
+                this, R.array.zone_radii, android.R.layout.simple_spinner_item);
+        adaptador.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        raio.setAdapter(adaptador);
+    }
+
+    // Pesquisa locais quando a pessoa termina de escrever.
+    private void configurarPesquisaDeLocal(EditText pesquisa, ListView sugestoes,
+                                            MaterialButton guardar,
+                                            BottomSheetDialog dialogo, List<TomTomApi.Local> locais,
+                                            ArrayAdapter<String> adaptador) {
         pesquisa.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence texto, int inicio, int antes, int depois) { }
             @Override public void onTextChanged(CharSequence texto, int inicio, int antes, int depois) { }
+
             @Override public void afterTextChanged(Editable texto) {
-                if (aEscolherLocal[0]) return;
-                localSelecionado[0] = null;
+                if (aEscolherLocal) return;
+                localSelecionado = null;
                 guardar.setEnabled(false);
                 if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
+
                 int pedidoAtual = ++numeroDaPesquisa;
                 String consulta = texto.toString().trim();
                 if (consulta.length() < 2) {
                     sugestoes.setVisibility(View.GONE);
-                    adaptadorSugestoes.clear();
+                    adaptador.clear();
                     return;
                 }
-                pesquisaPendente = () -> apiTomTom.pesquisarLocais(consulta, posicaoAtual,
-                        new TomTomApi.Resposta<>() {
-                            @Override public void aoConcluir(List<TomTomApi.Local> resultados) {
-                                if (pedidoAtual != numeroDaPesquisa || !dialogo.isShowing()) return;
-                                locais.clear();
-                                locais.addAll(resultados);
-                                adaptadorSugestoes.clear();
-                                for (TomTomApi.Local local : resultados) {
-                                    String linha = local.nome;
-                                    if (!local.endereco.isEmpty() && !local.endereco.equals(local.nome)) {
-                                        linha += " · " + local.endereco;
-                                    }
-                                    adaptadorSugestoes.add(linha);
-                                }
-                                adaptadorSugestoes.notifyDataSetChanged();
-                                sugestoes.setVisibility(resultados.isEmpty() ? View.GONE : View.VISIBLE);
-                                if (resultados.isEmpty()) {
-                                    Toast.makeText(ZonasFavoritasActivity.this,
-                                            R.string.search_not_found, Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                            @Override public void aoFalhar() {
-                                if (pedidoAtual == numeroDaPesquisa && dialogo.isShowing()) {
-                                    sugestoes.setVisibility(View.GONE);
-                                    Toast.makeText(ZonasFavoritasActivity.this,
-                                            R.string.search_error, Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        });
+
+                // Espera 400 ms para evitar um pedido por cada letra escrita.
+                pesquisaPendente = () -> pesquisarLocais(
+                        consulta, pedidoAtual, sugestoes, dialogo, locais, adaptador);
                 gestorPesquisa.postDelayed(pesquisaPendente, 400);
             }
         });
+    }
 
+    // GET à TomTom e apresentação das sugestões válidas.
+    private void pesquisarLocais(String consulta, int pedido, ListView sugestoes,
+                                 BottomSheetDialog dialogo, List<TomTomApi.Local> locais,
+                                 ArrayAdapter<String> adaptador) {
+        apiTomTom.pesquisarLocais(consulta, posicaoAtual, new TomTomApi.Resposta<>() {
+            @Override public void aoConcluir(List<TomTomApi.Local> resultados) {
+                if (pedido != numeroDaPesquisa || !dialogo.isShowing()) return;
+                locais.clear();
+                locais.addAll(resultados);
+                adaptador.clear();
+                for (TomTomApi.Local local : resultados) {
+                    String linha = local.nome;
+                    if (!local.endereco.isEmpty() && !local.endereco.equals(local.nome)) {
+                        linha += " · " + local.endereco;
+                    }
+                    adaptador.add(linha);
+                }
+                adaptador.notifyDataSetChanged();
+                sugestoes.setVisibility(resultados.isEmpty() ? View.GONE : View.VISIBLE);
+                if (resultados.isEmpty()) {
+                    Toast.makeText(ZonasFavoritasActivity.this,
+                            R.string.search_not_found, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override public void aoFalhar() {
+                if (pedido != numeroDaPesquisa || !dialogo.isShowing()) return;
+                sugestoes.setVisibility(View.GONE);
+                Toast.makeText(ZonasFavoritasActivity.this,
+                        R.string.search_error, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // Liga as sugestões, o botão guardar e o botão cancelar.
+    private void configurarAcoesDoFormulario(EditText pesquisa, EditText nome, Spinner raio, ListView sugestoes,
+                                              List<TomTomApi.Local> locais, MaterialButton guardar,
+                                              MaterialButton cancelar, BottomSheetDialog dialogo) {
         sugestoes.setOnItemClickListener((lista, linha, posicao, id) -> {
             if (posicao >= locais.size()) return;
-            localSelecionado[0] = locais.get(posicao);
-            aEscolherLocal[0] = true;
-            pesquisa.setText(localSelecionado[0].nome);
-            nome.setText(localSelecionado[0].nome);
-            aEscolherLocal[0] = false;
+            localSelecionado = locais.get(posicao);
+            aEscolherLocal = true;
+            pesquisa.setText(localSelecionado.nome);
+            nome.setText(localSelecionado.nome);
+            aEscolherLocal = false;
             sugestoes.setVisibility(View.GONE);
             guardar.setEnabled(true);
         });
-        guardar.setOnClickListener(view -> {
-            TomTomApi.Local local = localSelecionado[0];
-            String nomeZona = nome.getText().toString().trim();
-            if (local == null || nomeZona.isEmpty()) {
-                Toast.makeText(this, R.string.zone_choose_location, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            int[] raios = {1, 2, 5, 10};
-            int raioKm = raios[Math.max(0, raio.getSelectedItemPosition())];
-            String morada = local.endereco == null || local.endereco.isEmpty() ? local.nome : local.endereco;
-            ZonaFavorita zona = new ZonaFavorita("", utilizadorId, nomeZona, morada,
-                    local.latitude, local.longitude, raioKm);
-            guardar.setEnabled(false);
-            apiZonas.criar(zona, new ZonasFavoritasApi.Resposta<>() {
-                @Override public void aoConcluir(ZonaFavorita guardada) {
-                    if (isFinishing() || isDestroyed()) return;
-                    dialogo.dismiss();
-                    Toast.makeText(ZonasFavoritasActivity.this,
-                            R.string.zone_saved, Toast.LENGTH_SHORT).show();
-                    carregarZonas();
-                }
-                @Override public void aoFalhar() {
-                    if (isFinishing() || isDestroyed()) return;
-                    guardar.setEnabled(true);
-                    Toast.makeText(ZonasFavoritasActivity.this,
-                            R.string.zone_save_error, Toast.LENGTH_LONG).show();
-                }
-            });
-        });
-        cancelar.setOnClickListener(view -> {
-            if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
-            numeroDaPesquisa++;
-            dialogo.dismiss();
-        });
-        dialogo.setOnDismissListener(ignored -> {
-            if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
-            numeroDaPesquisa++;
-        });
-        dialogo.show();
+        guardar.setOnClickListener(view -> guardarZona(nome, raio, guardar, dialogo));
+        cancelar.setOnClickListener(view -> dialogo.dismiss());
+        dialogo.setOnDismissListener(ignorado -> cancelarPesquisaPendente());
     }
 
+    // POST à Firebase com a localização e o raio escolhidos.
+    private void guardarZona(EditText nome, Spinner raio, MaterialButton guardar,
+                             BottomSheetDialog dialogo) {
+        TomTomApi.Local local = localSelecionado;
+        String nomeZona = nome.getText().toString().trim();
+        if (local == null || nomeZona.isEmpty()) {
+            Toast.makeText(this, R.string.zone_choose_location, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int indiceRaio = Math.max(0, Math.min(
+                RAIOS_DISPONIVEIS.length - 1, raio.getSelectedItemPosition()));
+        int raioKm = RAIOS_DISPONIVEIS[indiceRaio];
+        String morada = local.endereco == null || local.endereco.isEmpty()
+                ? local.nome : local.endereco;
+        ZonaFavorita zona = new ZonaFavorita("", utilizadorId, nomeZona, morada,
+                local.latitude, local.longitude, raioKm);
+        guardar.setEnabled(false);
+
+        apiZonas.criar(zona, new ZonasFavoritasApi.Resposta<>() {
+            @Override public void aoConcluir(ZonaFavorita guardada) {
+                if (isFinishing() || isDestroyed()) return;
+                dialogo.dismiss();
+                Toast.makeText(ZonasFavoritasActivity.this,
+                        R.string.zone_saved, Toast.LENGTH_SHORT).show();
+                carregarZonas();
+            }
+
+            @Override public void aoFalhar() {
+                if (isFinishing() || isDestroyed()) return;
+                guardar.setEnabled(true);
+                Toast.makeText(ZonasFavoritasActivity.this,
+                        R.string.zone_save_error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    // Cancela pesquisas já agendadas e ignora respostas antigas.
+    private void cancelarPesquisaPendente() {
+        if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
+        numeroDaPesquisa++;
+    }
+
+    // Liberta pesquisa e ligações quando se sai deste ecrã.
     @Override
     protected void onDestroy() {
         if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);

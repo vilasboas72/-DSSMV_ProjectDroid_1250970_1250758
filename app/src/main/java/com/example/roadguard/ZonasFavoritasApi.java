@@ -19,20 +19,23 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Guarda e lê zonas favoritas através de pedidos HTTP à Firebase. */
+/** Faz os pedidos HTTP usados para guardar, ler e eliminar zonas favoritas na Firebase. */
 final class ZonasFavoritasApi {
     private static final String URL_BASE =
             "https://roadguard-25b31-default-rtdb.europe-west1.firebasedatabase.app/";
+    // Os pedidos correm em segundo plano para a interface não bloquear.
     private final ExecutorService tarefasDeRede = Executors.newSingleThreadExecutor();
+    // As respostas são entregues na thread principal do Android.
     private final Handler principal = new Handler(Looper.getMainLooper());
     private volatile boolean fechado;
 
+    // T é o resultado: uma lista, uma zona criada ou confirmação de eliminação.
     interface Resposta<T> {
         void aoConcluir(T resultado);
         void aoFalhar();
     }
 
-    // Cada utilizador só pede as zonas guardadas no seu próprio nó da Firebase.
+    // GET: lê as zonas guardadas no nó do utilizador com sessão iniciada.
     void listar(String utilizadorId, Resposta<List<ZonaFavorita>> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
@@ -56,7 +59,7 @@ final class ZonasFavoritasApi {
         });
     }
 
-    // O POST cria um identificador para a nova zona.
+    // POST: guarda uma zona e recebe da Firebase o id que a identifica.
     void criar(ZonaFavorita zona, Resposta<ZonaFavorita> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
@@ -80,7 +83,7 @@ final class ZonasFavoritasApi {
         });
     }
 
-    // O DELETE apaga apenas a zona indicada do utilizador com sessão iniciada.
+    // DELETE: remove a zona selecionada do nó do utilizador.
     void eliminar(String utilizadorId, String zonaId, Resposta<Boolean> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
@@ -94,6 +97,7 @@ final class ZonasFavoritasApi {
         });
     }
 
+    // Converte o JSON recebido num objeto e ignora dados incompletos ou inválidos.
     private ZonaFavorita lerZona(String id, String utilizadorId, JSONObject json) {
         if (json == null || !utilizadorId.equals(json.optString("utilizadorId"))) return null;
         double latitude = json.optDouble("latitude", Double.NaN);
@@ -101,7 +105,7 @@ final class ZonasFavoritasApi {
         int raioKm = json.optInt("raioKm", 0);
         if (!Double.isFinite(latitude) || !Double.isFinite(longitude)
                 || Math.abs(latitude) > 90 || Math.abs(longitude) > 180
-                // Aceita também raios antigos, para não perder zonas já guardadas.
+                // Mantém compatibilidade com zonas antigas de 25 e 50 km.
                 || !(raioKm == 1 || raioKm == 2 || raioKm == 5 || raioKm == 10
                 || raioKm == 25 || raioKm == 50)) return null;
         String nome = json.optString("nome", "").trim();
@@ -110,6 +114,7 @@ final class ZonasFavoritasApi {
         return new ZonaFavorita(id, utilizadorId, nome, local, latitude, longitude, raioKm);
     }
 
+    // Abre uma ligação HTTP e devolve o texto recebido da Firebase.
     private String pedir(String endereco, String metodo, JSONObject corpo) throws Exception {
         HttpURLConnection ligacao = (HttpURLConnection) new URL(endereco).openConnection();
         try {
@@ -147,6 +152,7 @@ final class ZonasFavoritasApi {
         principal.post(() -> { if (!fechado) acao.run(); });
     }
 
+    // Fecha as tarefas quando o ecrã das zonas é fechado.
     void fechar() {
         fechado = true;
         principal.removeCallbacksAndMessages(null);

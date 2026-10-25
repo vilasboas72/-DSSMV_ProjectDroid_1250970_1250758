@@ -67,11 +67,14 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private TomTomMap mapaTomTom;
     private Marker marcadorDaLocalizacao;
     private Polyline linhaDaRota;
+    // Zona ou zonas escolhidas no ecrã de zonas favoritas.
     private GeoPoint centroZonaFavoritaPendente;
     private boolean circuloZonaFavoritaVisivel;
+    // Número de círculos desenhados, para os remover quando o utilizador os oculta.
     private int quantidadeCirculosDesenhados;
     private final java.util.List<ZonaFavorita> zonasExibidasNoMapa = new java.util.ArrayList<>();
     private ZonasFavoritasApi apiZonasFavoritas;
+    // Zonas guardadas, usadas para verificar se há novos perigos dentro dos raios.
     private final java.util.List<ZonaFavorita> zonasFavoritas = new java.util.ArrayList<>();
     private final java.util.Set<String> idsDeAlertasConhecidos = new java.util.HashSet<>();
     private boolean primeiraLeituraDeAlertas = true;
@@ -708,6 +711,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     private void lerZonaFavoritaDoIntent(Intent intent) {
+        // O ecrã anterior envia listas quando foram escolhidas várias zonas.
         double[] latitudes = intent.getDoubleArrayExtra("zonas_latitudes");
         double[] longitudes = intent.getDoubleArrayExtra("zonas_longitudes");
         int[] raios = intent.getIntArrayExtra("zonas_raios");
@@ -724,6 +728,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             }
         }
         if (zonasExibidasNoMapa.isEmpty()) {
+            // Também aceita a zona única enviada ao tocar numa linha da lista.
             if (!intent.hasExtra("zona_latitude") || !intent.hasExtra("zona_longitude")) return;
             double latitude = intent.getDoubleExtra("zona_latitude", Double.NaN);
             double longitude = intent.getDoubleExtra("zona_longitude", Double.NaN);
@@ -742,6 +747,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void mostrarZonasFavoritasNoMapa(java.util.List<ZonaFavorita> zonas) {
         if (mapaTomTom == null || zonas.isEmpty()) return;
         desenharCirculosDasZonas(zonas);
+        // Usa o ponto médio das zonas para enquadrá-las todas no mapa.
         double latitudeMedia = 0;
         double longitudeMedia = 0;
         for (ZonaFavorita zona : zonas) {
@@ -749,6 +755,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             longitudeMedia += zona.longitude;
         }
         GeoPoint centro = new GeoPoint(latitudeMedia / zonas.size(), longitudeMedia / zonas.size());
+        // Calcula a distância até à zona mais afastada, incluindo o seu raio.
         double maiorExtensaoKm = 0.5;
         for (ZonaFavorita zona : zonas) {
             float[] distancia = new float[1];
@@ -757,6 +764,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             maiorExtensaoKm = Math.max(maiorExtensaoKm,
                     distancia[0] / 1000.0 + zona.raioKm);
         }
+        // Quanto maior a área, mais afastada fica a câmara.
         double zoom = Math.max(3.0, Math.min(16.0,
                 15.0 - Math.log(maiorExtensaoKm * 2.0) / Math.log(2.0)));
         mapaTomTom.moveCamera(new CameraOptions(centro, zoom, 0.0, 0.0, 45.0));
@@ -771,6 +779,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         removerCirculosDasZonas();
         for (int indice = 0; indice < zonas.size(); indice++) {
             ZonaFavorita zona = zonas.get(indice);
+            // O SDK recebe metros; 1000 metros correspondem a cada quilómetro escolhido.
             Radius raio = new Radius(zona.raioKm * 1000.0, 0, null);
             CircleOptions opcoes = new CircleOptions(
                     new GeoPoint(zona.latitude, zona.longitude), raio,
@@ -785,12 +794,14 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void removerCirculosDasZonas() {
         if (mapaTomTom == null) return;
         mapaTomTom.removeCircles("zona_favorita");
+        // Cada círculo tem uma etiqueta própria para poder ser removido.
         for (int indice = 0; indice < quantidadeCirculosDesenhados; indice++) {
             mapaTomTom.removeCircles("zona_favorita_" + indice);
         }
         quantidadeCirculosDesenhados = 0;
     }
 
+    // GET: carrega as zonas desta conta para comparar com os alertas recebidos.
     private void carregarZonasFavoritas() {
         apiZonasFavoritas.listar(utilizadorLogado, new ZonasFavoritasApi.Resposta<>() {
             @Override public void aoConcluir(java.util.List<ZonaFavorita> zonas) {
@@ -808,6 +819,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     // O mapa consulta os alertas a cada 30 segundos enquanto está aberto.
     private void verificarNovosAlertasNasZonas(java.util.List<AlertaDTO> alertas) {
         if (primeiraLeituraDeAlertas) {
+            // Os alertas que já existiam não são tratados como novos avisos.
             for (AlertaDTO alerta : alertas) idsDeAlertasConhecidos.add(alerta.getId());
             primeiraLeituraDeAlertas = false;
             return; // Os alertas antigos não aparecem como novos avisos.
@@ -817,6 +829,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         for (AlertaDTO alerta : alertas) {
             if (!idsDeAlertasConhecidos.add(alerta.getId())) continue;
             for (ZonaFavorita zona : zonasFavoritas) {
+                // Compara o alerta com o centro e o raio de cada zona guardada.
                 double distancia = medirDistanciaEmMetros(
                         alerta.getLatitude(), alerta.getLongitude(),
                         zona.latitude, zona.longitude);
@@ -834,6 +847,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     private double medirDistanciaEmMetros(double lat1, double lon1, double lat2, double lon2) {
+        // Fórmula Haversine: distância em linha reta entre duas coordenadas GPS.
         double diferencaLat = Math.toRadians(lat2 - lat1);
         double diferencaLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(diferencaLat / 2) * Math.sin(diferencaLat / 2)
