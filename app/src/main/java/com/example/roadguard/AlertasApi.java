@@ -3,46 +3,30 @@ package com.example.roadguard;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.net.Uri;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import java.net.UnknownHostException;
 import java.net.SocketTimeoutException;
 import java.io.IOException;
 import javax.net.ssl.SSLException;
-import org.json.JSONException;
-import java.nio.charset.StandardCharsets;
+import com.google.gson.JsonParseException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /** Pedidos REST de alertas, executados fora da thread da interface. */
 final class AlertasApi {
-    private static final String URL_BASE =
-            "https://roadguard-25b31-default-rtdb.europe-west1.firebasedatabase.app/";
-    private static final String URL_ALERTAS = URL_BASE + "Alerta.json";
+    // Uma fila de pedidos de rede, executados sem bloquear o ecrã.
     private final ExecutorService tarefasDeRede = Executors.newSingleThreadExecutor();
     private final Handler principal = new Handler(Looper.getMainLooper());
     private volatile boolean fechado;
-    // Evita repetir o pedido quando se abrem vários alertas do mesmo autor.
-    private final Map<String, String> nomesDosAutores = new HashMap<>();
 
     enum Erro { DNS, LIGACAO, TEMPO_ESGOTADO, SEM_PERMISSAO, DADOS, SERVIDOR, LIGACAO_SEGURA }
 
-    private static final class ErroHttp extends IOException {
-        final int estado;
-        ErroHttp(int estado) { super("HTTP " + estado); this.estado = estado; }
-    }
-
+    // T é o tipo de resultado: List<AlertaDTO>, String ou Boolean.
+    // A Activity indica o que fazer quando o pedido acaba ou falha.
     interface Resposta<T> {
         void aoConcluir(T resultado);
         void aoFalhar(Erro erro);
@@ -51,16 +35,12 @@ final class AlertasApi {
     void listar(Resposta<List<AlertaDTO>> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
-                String resposta = pedir(URL_ALERTAS, "GET", null);
+                Map<String, JsonElement> dados = ClienteRetrofit.executar(
+                        ClienteRetrofit.firebase.listarAlertas());
                 List<AlertaDTO> alertas = new ArrayList<>();
-                // Um nó que ainda não existe é devolvido como JSON null.
-                if (!"null".equals(resposta.trim())) {
-                    JSONObject dados = new JSONObject(resposta);
-                    Iterator<String> chaves = dados.keys();
-                    while (chaves.hasNext()) {
-                        String id = chaves.next();
-                        JSONObject json = dados.optJSONObject(id);
-                        AlertaDTO alerta = lerAlerta(id, json);
+                if (dados != null) {
+                    for (String id : dados.keySet()) {
+                        AlertaDTO alerta = lerAlerta(id, dados.get(id));
                         if (alerta != null && alerta.isAtivo()) alertas.add(alerta);
                     }
                 }
@@ -75,17 +55,21 @@ final class AlertasApi {
         tarefasDeRede.execute(() -> {
             try {
                 CategoriaAlerta categoria = CategoriaAlerta.procurar(alerta.getCategoriaId());
-                if (categoria == null) throw new JSONException("Categoria desconhecida");
-                JSONObject json = new JSONObject();
-                json.put("utilizadorId", alerta.getUtilizadorId());
-                json.put("categoriaId", alerta.getCategoriaId());
-                json.put("gravidade", categoria.gravidade);
-                json.put("latitude", alerta.getLatitude());
-                json.put("longitude", alerta.getLongitude());
+                if (categoria == null) throw new JsonParseException("Categoria desconhecida");
+                JsonObject json = new JsonObject();
+                json.addProperty("utilizadorId", alerta.getUtilizadorId());
+                json.addProperty("categoriaId", alerta.getCategoriaId());
+                json.addProperty("gravidade", categoria.gravidade);
+                json.addProperty("latitude", alerta.getLatitude());
+                json.addProperty("longitude", alerta.getLongitude());
                 // A hora é atribuída pelo servidor, independentemente do relógio do telefone.
-                json.put("dataCriacao", new JSONObject().put(".sv", "timestamp"));
-                json.put("ativo", true);
-                String id = new JSONObject(pedir(URL_ALERTAS, "POST", json)).getString("name");
+                JsonObject dataServidor = new JsonObject();
+                dataServidor.addProperty(".sv", "timestamp");
+                json.add("dataCriacao", dataServidor);
+                json.addProperty("ativo", true);
+                String id = ClienteRetrofit.executar(ClienteRetrofit.firebase.criarAlerta(
+                        json))
+                        .get("name").getAsString();
                 if (id.isEmpty()) throw new IllegalStateException("Identificador em falta");
                 entregar(() -> respostaPedido.aoConcluir(id));
             } catch (Exception e) {
@@ -98,8 +82,7 @@ final class AlertasApi {
     void eliminar(String alertaId, Resposta<Boolean> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
-                String endereco = URL_BASE + "Alerta/" + Uri.encode(alertaId) + ".json";
-                pedir(endereco, "DELETE", null);
+                ClienteRetrofit.executar(ClienteRetrofit.firebase.eliminarAlerta(alertaId));
                 entregar(() -> respostaPedido.aoConcluir(true));
             } catch (Exception erro) {
                 falhar(respostaPedido, erro);
@@ -111,14 +94,9 @@ final class AlertasApi {
     void obterNomeDoAutor(String idUtilizador, Resposta<String> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
-                String nome = nomesDosAutores.get(idUtilizador);
-                if (nome == null) {
-                    String endereco = URL_BASE + "Utilizador/" + Uri.encode(idUtilizador) + "/nome.json";
-                    Object valor = new JSONTokener(pedir(endereco, "GET", null)).nextValue();
-                    nome = valor instanceof String ? ((String) valor).trim() : "";
-                    if (!nome.isEmpty()) nomesDosAutores.put(idUtilizador, nome);
-                }
-                String nomeEncontrado = nome;
+                String nome = ClienteRetrofit.executar(ClienteRetrofit.firebase.obterNome(idUtilizador));
+                if (nome == null) nome = "";
+                String nomeEncontrado = nome.trim();
                 entregar(() -> respostaPedido.aoConcluir(nomeEncontrado));
             } catch (Exception causa) {
                 falhar(respostaPedido, causa);
@@ -126,56 +104,29 @@ final class AlertasApi {
         });
     }
 
-    private AlertaDTO lerAlerta(String id, JSONObject json) {
-        if (json == null || !(json.opt("latitude") instanceof Number)
-                || !(json.opt("longitude") instanceof Number)
-                || !(json.opt("dataCriacao") instanceof Number)
-                || !(json.opt("ativo") instanceof Boolean)) return null;
-        double lat = json.optDouble("latitude", Double.NaN);
-        double lon = json.optDouble("longitude", Double.NaN);
-        String categoria = json.optString("categoriaId");
-        String gravidade = json.optString("gravidade");
-        if (!Double.isFinite(lat) || !Double.isFinite(lon) || Math.abs(lat) > 90
-                || Math.abs(lon) > 180 || json.optString("utilizadorId").isEmpty()
-                || CategoriaAlerta.procurar(categoria) == null
-                || !("baixa".equals(gravidade) || "media".equals(gravidade) || "elevada".equals(gravidade))) return null;
-        AlertaDTO alerta = new AlertaDTO();
-        alerta.setId(id);
-        alerta.setUtilizadorId(json.optString("utilizadorId"));
-        alerta.setCategoriaId(categoria);
-        alerta.setGravidade(gravidade);
-        alerta.setLatitude(lat);
-        alerta.setLongitude(lon);
-        alerta.setDataCriacao(json.optLong("dataCriacao"));
-        alerta.setAtivo(json.optBoolean("ativo"));
-        return alerta;
-    }
-
-    private String pedir(String endereco, String metodo, JSONObject corpo) throws Exception {
-        HttpURLConnection ligacao = (HttpURLConnection) new URL(endereco).openConnection();
+    private AlertaDTO lerAlerta(String id, JsonElement valor) {
         try {
-            ligacao.setRequestMethod(metodo);
-            ligacao.setConnectTimeout(15000);
-            ligacao.setReadTimeout(15000);
-            ligacao.setRequestProperty("Accept", "application/json");
-            if (corpo != null) {
-                ligacao.setDoOutput(true);
-                ligacao.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                try (OutputStream saida = ligacao.getOutputStream()) {
-                    saida.write(corpo.toString().getBytes(StandardCharsets.UTF_8));
-                }
-            }
-            int estado = ligacao.getResponseCode();
-            if (estado < 200 || estado >= 300) throw new ErroHttp(estado);
-            try (BufferedReader leitor = new BufferedReader(new InputStreamReader(
-                    ligacao.getInputStream(), StandardCharsets.UTF_8))) {
-                StringBuilder resposta = new StringBuilder();
-                String linha;
-                while ((linha = leitor.readLine()) != null) resposta.append(linha);
-                return resposta.toString();
-            }
-        } finally {
-            ligacao.disconnect();
+            if (valor == null || !valor.isJsonObject()) return null;
+            JsonObject json = valor.getAsJsonObject();
+            // Rejeita números/booleanos guardados como texto e campos em falta.
+            if (!json.getAsJsonPrimitive("latitude").isNumber()
+                    || !json.getAsJsonPrimitive("longitude").isNumber()
+                    || !json.getAsJsonPrimitive("dataCriacao").isNumber()
+                    || !json.getAsJsonPrimitive("ativo").isBoolean()) return null;
+            double lat = json.get("latitude").getAsDouble();
+            double lon = json.get("longitude").getAsDouble();
+            String categoria = json.get("categoriaId").getAsString();
+            String gravidade = json.get("gravidade").getAsString();
+            if (!Double.isFinite(lat) || !Double.isFinite(lon) || Math.abs(lat) > 90
+                    || Math.abs(lon) > 180 || json.get("utilizadorId").getAsString().isEmpty()
+                    || CategoriaAlerta.procurar(categoria) == null
+                    || !("baixa".equals(gravidade) || "media".equals(gravidade)
+                    || "elevada".equals(gravidade))) return null;
+            AlertaDTO alerta = ClienteRetrofit.gson.fromJson(valor, AlertaDTO.class);
+            alerta.setId(id);
+            return alerta;
+        } catch (Exception erro) {
+            return null; // Um alerta inválido não impede a leitura dos restantes.
         }
     }
 
@@ -186,17 +137,19 @@ final class AlertasApi {
         if (causa instanceof UnknownHostException) erro = Erro.DNS;
         else if (causa instanceof SocketTimeoutException) erro = Erro.TEMPO_ESGOTADO;
         else if (causa instanceof SSLException) erro = Erro.LIGACAO_SEGURA;
-        else if (causa instanceof ErroHttp) {
-            int estado = ((ErroHttp) causa).estado;
-            erro = estado == 401 || estado == 403 ? Erro.SEM_PERMISSAO
-                    : estado == 400 ? Erro.DADOS : Erro.SERVIDOR;
-        } else if (causa instanceof JSONException) erro = Erro.DADOS;
+        else if (causa instanceof retrofit2.HttpException) {
+            int estado = ((retrofit2.HttpException) causa).code();
+            if (estado == 401 || estado == 403) erro = Erro.SEM_PERMISSAO;
+            else if (estado == 400) erro = Erro.DADOS;
+            else erro = Erro.SERVIDOR;
+        } else if (causa instanceof JsonParseException) erro = Erro.DADOS;
         else if (causa instanceof IOException) erro = Erro.LIGACAO;
         else erro = Erro.SERVIDOR;
         Erro resultado = erro;
         entregar(() -> respostaPedido.aoFalhar(resultado));
     }
 
+    // Handler devolve a resposta à thread principal, onde se pode alterar a interface.
     private void entregar(Runnable acao) {
         principal.post(() -> { if (!fechado) acao.run(); });
     }

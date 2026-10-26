@@ -12,11 +12,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import org.json.JSONObject;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 public class RegistoActivity extends AppCompatActivity {
 
@@ -76,30 +71,17 @@ public class RegistoActivity extends AppCompatActivity {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            HttpURLConnection httpConn = null;
                             try {
-                                URL url = new URL("https://roadguard-25b31-default-rtdb.europe-west1.firebasedatabase.app/Utilizador.json");
-                                httpConn = (HttpURLConnection) url.openConnection();
-
-                                // Verbo HTTP POST (cria um novo registo na Firebase)
-                                httpConn.setRequestMethod("POST");
-                                httpConn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-                                httpConn.setRequestProperty("Accept", "application/json");
-                                httpConn.setDoOutput(true);
-
-                                // Construir o objeto JSON com os dados do novo utilizador
-                                JSONObject novoUtilizador = new JSONObject();
+                                java.util.Map<String, String> novoUtilizador = new java.util.HashMap<>();
                                 novoUtilizador.put("nome", nome);
                                 novoUtilizador.put("email", email);
                                 novoUtilizador.put("password", password);
-
-                                // Enviar o JSON no corpo do pedido
-                                OutputStream os = httpConn.getOutputStream();
-                                os.write(novoUtilizador.toString().getBytes(StandardCharsets.UTF_8));
-                                os.close();
-
-                                final int responseCode = httpConn.getResponseCode();
-                                if (responseCode == HttpURLConnection.HTTP_OK) {
+                                // Gson transforma o Map em JSON no corpo do POST.
+                                retrofit2.Response<com.google.gson.JsonObject> resposta =
+                                        ClienteRetrofit.firebase.criarUtilizador(novoUtilizador).execute();
+                                final int responseCode = resposta.code();
+                                if (resposta.errorBody() != null) resposta.errorBody().close();
+                                if (resposta.isSuccessful()) {
                                     runOnUiThread(new Runnable() {
                                         @Override
                                         public void run() {
@@ -123,8 +105,7 @@ public class RegistoActivity extends AppCompatActivity {
                                         Toast.makeText(RegistoActivity.this, R.string.register_error, Toast.LENGTH_LONG).show();
                                     }
                                 });
-                            } finally {
-                                if (httpConn != null) httpConn.disconnect();
+
                             }
                         }
                     }).start();

@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
@@ -18,13 +17,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import org.json.JSONObject;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Iterator;
 
 public class MainActivity extends AppCompatActivity {
     private EditText editEmail;
@@ -130,91 +122,61 @@ public class MainActivity extends AppCompatActivity {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            HttpURLConnection httpConn = null;
                             try {
-                                // PEDIDO HTTP (Ligar à Base de Dados)
-                                URL url = new URL("https://roadguard-25b31-default-rtdb.europe-west1.firebasedatabase.app/Utilizador.json");
-                                httpConn = (HttpURLConnection) url.openConnection();
-                                httpConn.setRequestMethod("GET"); // Pedido GET porque apenas queremos LER os dados.
-                                httpConn.connect();
+                                // Retrofit faz o GET e Gson preenche um UtilizadorDTO por conta.
+                                java.util.Map<String, UtilizadorDTO> utilizadores = ClienteRetrofit.executar(
+                                        ClienteRetrofit.firebase.listarUtilizadores());
+                                // Se a Firebase estiver vazia.
+                                if (utilizadores == null || utilizadores.isEmpty()) {
+                                    // runOnUiThread devolve o controlo ao ecrã principal para podermos mostrar mensagens visuais.
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            Toast.makeText(MainActivity.this, R.string.database_empty, Toast.LENGTH_LONG).show();
+                                        }
+                                    });
+                                } else {
+                                    boolean loginSucesso = false;
+                                    String idUtilizadorEncontrado = "";
 
-                                // Verifica se o servidor respondeu com sucesso (Código 200 / HTTP_OK).
-                                if (httpConn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                                    // Prepara as ferramentas para ler os bytes e transformá-los em texto legível.
-                                    InputStream in = httpConn.getInputStream();
-                                    BufferedReader br = new BufferedReader(new InputStreamReader(in));
-                                    StringBuilder sb = new StringBuilder(); // Usado para colar as linhas de texto umas nas outras.
-                                    String linha;
-
-                                    // Lê a resposta linha a linha até acabar.
-                                    while ((linha = br.readLine()) != null) {
-                                        sb.append(linha);
+                                    // A chave da Firebase é o id; o valor é um utilizador Java.
+                                    for (java.util.Map.Entry<String, UtilizadorDTO> conta : utilizadores.entrySet()) {
+                                        String uid = conta.getKey();
+                                        UtilizadorDTO utilizador = conta.getValue();
+                                        if (utilizador == null) continue;
+                                        // Compara os dados que vieram da Firebase com os que a pessoa escreveu no ecrã.
+                                        if(email.equals(utilizador.getEmail()) && password.equals(utilizador.getPassword())) {
+                                            loginSucesso = true;
+                                            idUtilizadorEncontrado = uid;
+                                            break; // Para a pesquisa porque já encontrou a conta correta.
+                                        }
                                     }
 
-                                    // Guarda o texto.
-                                    String jsonResposta = sb.toString();
-                                    Log.d("FIREBASE_DEBUG", "A Firebase devolveu: " + jsonResposta);
+                                    if (loginSucesso) {
+                                        // Abre o ficheiro interno da memória e guarda o email e ID do utilizador (shared preference).
+                                        SharedPreferences sharedPreferences = MainActivity.this.getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE);
+                                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                                        editor.putString("UID_LOGADO", idUtilizadorEncontrado);
+                                        editor.putString("EMAIL_LOGADO", email);
+                                        editor.apply();
 
-                                    // Se a Firebase estiver vazia.
-                                    if (jsonResposta.equals("null") || jsonResposta.isEmpty()) {
-                                        // runOnUiThread devolve o controlo ao ecrã principal para podermos mostrar mensagens visuais.
+                                        // Usa o runOnUiThread para voltar ao ecrã principal e viajar para o Mapa.
                                         runOnUiThread(new Runnable() {
                                             @Override
                                             public void run() {
-                                                Toast.makeText(MainActivity.this, R.string.database_empty, Toast.LENGTH_LONG).show();
+                                                Intent intent = new Intent(MainActivity.this, MapActivity.class);
+                                                startActivity(intent);
+                                                finish(); // Destrói o ecrã de login.
                                             }
                                         });
                                     } else {
-                                        boolean loginSucesso = false;
-                                        String idUtilizadorEncontrado = "";
-
-                                        JSONObject jsonObject = new JSONObject(jsonResposta);
-                                        // Puxa a lista de todas as chaves (IDs únicos) geradas pela Firebase.
-                                        Iterator<String> keys = jsonObject.keys();
-
-                                        // analisar um utilizador de cada vez.
-                                        while(keys.hasNext()) {
-                                            String uid = keys.next();
-                                            JSONObject userObj = jsonObject.getJSONObject(uid); // Isola os dados de 1 utilizador.
-
-                                            UtilizadorDTO utilizador = new UtilizadorDTO();
-                                            utilizador.setEmail(userObj.optString("email", ""));
-                                            utilizador.setPassword(userObj.optString("password", ""));
-
-                                            // Compara os dados que vieram da Firebase com os que a pessoa escreveu no ecrã.
-                                            if(utilizador.getEmail().equals(email) && utilizador.getPassword().equals(password)) {
-                                                loginSucesso = true;
-                                                idUtilizadorEncontrado = uid;
-                                                break; // Para a pesquisa porque já encontrou a conta correta.
+                                        // Se os dados não combinarem, mostra mensagem de erro no ecrã.
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(MainActivity.this, R.string.login_invalid, Toast.LENGTH_SHORT).show();
                                             }
-                                        }
-
-                                        if (loginSucesso) {
-                                            // Abre o ficheiro interno da memória e guarda o email e ID do utilizador (shared preference).
-                                            SharedPreferences sharedPreferences = MainActivity.this.getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE);
-                                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                                            editor.putString("UID_LOGADO", idUtilizadorEncontrado);
-                                            editor.putString("EMAIL_LOGADO", email);
-                                            editor.apply();
-
-                                            // Usa o runOnUiThread para voltar ao ecrã principal e viajar para o Mapa.
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    Intent intent = new Intent(MainActivity.this, MapActivity.class);
-                                                    startActivity(intent);
-                                                    finish(); // Destrói o ecrã de login.
-                                                }
-                                            });
-                                        } else {
-                                            // Se os dados não combinarem, mostra mensagem de erro no ecrã.
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    Toast.makeText(MainActivity.this, R.string.login_invalid, Toast.LENGTH_SHORT).show();
-                                                }
-                                            });
-                                        }
+                                        });
                                     }
                                 }
                             } catch (Exception e) {
@@ -226,9 +188,7 @@ public class MainActivity extends AppCompatActivity {
                                         Toast.makeText(MainActivity.this, R.string.login_error, Toast.LENGTH_LONG).show();
                                     }
                                 });
-                            } finally {
-                                // O bloco finally corre sempre no final de tudo. Serve para fechar a ligação e poupar bateria/memória.
-                                if (httpConn != null) httpConn.disconnect();
+
                             }
                         }
                     }).start(); // Dá a ordem para a Thread em segundo plano arrancar.

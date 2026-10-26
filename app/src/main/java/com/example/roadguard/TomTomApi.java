@@ -9,11 +9,6 @@ import com.tomtom.sdk.location.GeoPoint;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -160,12 +155,8 @@ final class TomTomApi {
     }
 
     private double medirDistancia(GeoPoint pontoA, GeoPoint pontoB) {
-        double lat1 = Math.toRadians(pontoA.getLatitude());
-        double lat2 = Math.toRadians(pontoB.getLatitude());
-        double dLat = lat2 - lat1;
-        double dLon = Math.toRadians(pontoB.getLongitude() - pontoA.getLongitude());
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return VerificadorDeAlertas.medirDistancia(pontoA.getLatitude(), pontoA.getLongitude(),
+                pontoB.getLatitude(), pontoB.getLongitude());
     }
 
     void fechar() {
@@ -173,18 +164,10 @@ final class TomTomApi {
     }
 
     private JSONObject pedirJson(String endereco) throws Exception {
-        HttpURLConnection ligacao = (HttpURLConnection) new URL(endereco).openConnection();
-        ligacao.setRequestMethod("GET");
-        ligacao.setConnectTimeout(10000);
-        ligacao.setReadTimeout(15000);
-        try (BufferedReader leitor = new BufferedReader(new InputStreamReader(ligacao.getInputStream(), StandardCharsets.UTF_8))) {
-            StringBuilder texto = new StringBuilder();
-            String linha;
-            while ((linha = leitor.readLine()) != null) texto.append(linha);
-            return new JSONObject(texto.toString());
-        } finally {
-            ligacao.disconnect();
-        }
+        com.google.gson.JsonObject resposta = ClienteRetrofit.executar(
+                ClienteRetrofit.tomTom.obter(endereco));
+        if (resposta == null) throw new IllegalStateException("Resposta vazia da TomTom");
+        return new JSONObject(resposta.toString());
     }
 
     private <T> void entregar(Resposta<T> respostaPedido, T resultado) {

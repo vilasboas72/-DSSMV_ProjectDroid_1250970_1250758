@@ -53,6 +53,8 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
     private int modoSelecao = SEM_SELECAO;
     private TomTomApi.Local localSelecionado;
     private boolean aEscolherLocal;
+    private int eliminacoesPorTerminar;
+    private boolean houveErroAoEliminar;
 
     @Override
     protected void onCreate(@Nullable Bundle estado) {
@@ -256,27 +258,30 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
 
     // DELETE: apaga as zonas escolhidas e atualiza a lista no fim.
     private void eliminarZonas(List<ZonaFavorita> zonas) {
+        if (eliminacoesPorTerminar > 0) return;
         botaoConfirmarSelecao.setEnabled(false);
-        int[] restantes = {zonas.size()};
-        boolean[] houveErro = {false};
+        eliminacoesPorTerminar = zonas.size();
+        houveErroAoEliminar = false;
         for (ZonaFavorita zona : zonas) {
             apiZonas.eliminar(utilizadorId, zona.id, new ZonasFavoritasApi.Resposta<>() {
                 @Override public void aoConcluir(Boolean resultado) { terminarUmaEliminacao(); }
                 @Override public void aoFalhar() {
-                    houveErro[0] = true;
+                    houveErroAoEliminar = true;
                     terminarUmaEliminacao();
-                }
-                private void terminarUmaEliminacao() {
-                    // Só atualiza o ecrã depois de todos os pedidos terminarem.
-                    if (--restantes[0] != 0 || isFinishing() || isDestroyed()) return;
-                    modoSelecao = SEM_SELECAO;
-                    Toast.makeText(ZonasFavoritasActivity.this,
-                            houveErro[0] ? R.string.zones_delete_error : R.string.zones_delete_done,
-                            Toast.LENGTH_SHORT).show();
-                    carregarZonas();
                 }
             });
         }
+    }
+
+    private void terminarUmaEliminacao() {
+        eliminacoesPorTerminar--;
+        // Só atualiza a lista quando todos os pedidos DELETE terminarem.
+        if (eliminacoesPorTerminar > 0 || isFinishing() || isDestroyed()) return;
+        modoSelecao = SEM_SELECAO;
+        int mensagem = R.string.zones_delete_done;
+        if (houveErroAoEliminar) mensagem = R.string.zones_delete_error;
+        Toast.makeText(this, mensagem, Toast.LENGTH_SHORT).show();
+        carregarZonas();
     }
 
     // Abre o formulário de pesquisa, nome e raio para criar uma zona.

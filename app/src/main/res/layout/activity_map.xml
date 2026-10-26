@@ -252,4 +252,8 @@
             android:scaleType="fitCenter"
             app:tint="#FFFFFF" />
 
+    <include android:id="@+id/painel_aviso" layout="@layout/painel_aviso_alerta"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_gravity="bottom" android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp" android:layout_marginBottom="16dp" />
 </FrameLayout>

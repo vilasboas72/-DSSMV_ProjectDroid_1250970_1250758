@@ -37,6 +37,9 @@ android {
 }
 
 dependencies {
+    // Retrofit define os pedidos HTTP; Gson converte o JSON em objetos Java.
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.10.0")
     implementation("androidx.activity:activity:1.8.0")
@@ -45,6 +48,7 @@ dependencies {
     // A linha 1.26 inclui suporte a páginas de memória de 16 KB nas bibliotecas do mapa.
     implementation("com.tomtom.sdk.maps:map-display:1.26.8")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 
