@@ -28,6 +28,9 @@
     <string name="search_map">Pesquisar</string>
     <string name="search_description">Pesquisar no mapa</string>
     <string name="clear_search">Limpar pesquisa</string>
+    <string name="search_history_title">Pesquisas recentes</string>
+    <string name="search_remove_recent_default">Remover pesquisa recente</string>
+    <string name="search_remove_recent">Remover pesquisa: %1$s</string>
     <string name="saved_session_title">Sessão iniciada</string>
     <string name="saved_session_message">Queres continuar com a conta %1$s?</string>
     <string name="continue_session">Continuar</string>

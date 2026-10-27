@@ -20,10 +20,12 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.graphics.PointF;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.content.pm.ApplicationInfo;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 import com.google.android.material.button.MaterialButton;
@@ -32,6 +34,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import android.widget.TextView;
 import android.app.Dialog;
 import androidx.annotation.NonNull;
+import androidx.activity.OnBackPressedCallback;
 import android.graphics.Color;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
@@ -58,6 +61,10 @@ import com.tomtom.sdk.map.display.ui.MapView;
 import com.tomtom.sdk.map.display.ui.MapReadyCallback;
 import com.tomtom.sdk.location.GeoPoint;
 import com.tomtom.sdk.map.display.image.ImageFactory;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 // Activity que apresenta o mapa TomTom e a posição atual do utilizador.
 public class MapActivity extends FragmentActivity implements MapReadyCallback {
@@ -87,15 +94,22 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private int margemFinalDoSistema;
     private int margemInferiorDoSistema;
     private int margemEsquerdaDoSistema;
+    private boolean tecladoVisivel;
     private Location ultimaLocalizacaoGPS;
     private TomTomApi apiTomTom;
     private TomTomApi.Local destinoSelecionado;
     private TomTomApi.Rota rotaPlaneada;
     private ArrayAdapter<String> adaptadorDaPesquisa;
+    private ArrayAdapter<TomTomApi.Local> adaptadorHistorico;
+    private final List<TomTomApi.Local> historicoPesquisas = new ArrayList<>();
+    private View cabecalhoHistorico;
+    private boolean historicoVisivel;
     private final Handler gestorPesquisa = new Handler(Looper.getMainLooper());
     private Runnable pesquisaPendente;
     private int numeroDaPesquisa;
     private boolean viagemIniciada;
+    // Fica falso enquanto a pessoa explora o mapa durante a viagem.
+    private boolean seguirLocalNaViagem = true;
     private boolean aEscolherDestino;
     private int indiceAtualDaRota;
     private AlertasApi apiAlertas;
@@ -136,6 +150,20 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
 
         interfaceMapa = ActivityMapBinding.inflate(getLayoutInflater());
         setContentView(interfaceMapa.getRoot());
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (historicoVisivel) {
+                    esconderHistoricoPesquisas();
+                    esconderTeclado();
+                    interfaceMapa.mapSearchInput.clearFocus();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    setEnabled(true);
+                }
+            }
+        });
         painelAvisos = new PainelAvisos(this, findViewById(R.id.painel_aviso), () -> {
             atualizarPosicaoDoBotaoAlerta();
             atualizarPosicaoDoBotaoCentralizar();
@@ -186,6 +214,13 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 OnlineCachePolicy.Default.INSTANCE,
                 false);
         vistaDoMapa = new MapView(this, opcoesDoMapa);
+        vistaDoMapa.setOnTouchListener((vista, evento) -> {
+            if (viagemIniciada && (evento.getActionMasked() == MotionEvent.ACTION_MOVE
+                    || evento.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN)) {
+                seguirLocalNaViagem = false;
+            }
+            return false; // Deixa o TomTom receber o gesto para mover e ampliar o mapa.
+        });
         // Mantém o fundo do nosso botão e usa o desenho original de localização da TomTom.
         ((View) vistaDoMapa.getCompassButton()).setVisibility(View.INVISIBLE);
         ((View) vistaDoMapa.getCurrentLocationButton()).setVisibility(View.INVISIBLE);
@@ -208,6 +243,12 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void configurarMenuDoMapa() {
         int margin = Math.round(16 * getResources().getDisplayMetrics().density);
         ViewCompat.setOnApplyWindowInsetsListener(interfaceMapa.getRoot(), (view, windowInsets) -> {
+            boolean tecladoVisivelAgora = windowInsets.isVisible(WindowInsetsCompat.Type.ime());
+            if (tecladoVisivel && !tecladoVisivelAgora && historicoVisivel) {
+                esconderHistoricoPesquisas();
+                interfaceMapa.mapSearchInput.clearFocus();
+            }
+            tecladoVisivel = tecladoVisivelAgora;
             Insets insets = windowInsets.getInsets(
                     WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             margemSuperiorDoSistema = insets.top;
@@ -295,7 +336,25 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     // Liga a pesquisa dinâmica e os botões para iniciar ou terminar uma viagem.
     private void configurarPesquisaERota() {
         adaptadorDaPesquisa = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        adaptadorHistorico = new AdaptadorPesquisasRecentes();
+        configurarCabecalhoHistorico();
         interfaceMapa.searchSuggestions.setAdapter(adaptadorDaPesquisa);
+        interfaceMapa.mapSearchBar.setOnClickListener(view -> {
+            interfaceMapa.mapSearchInput.requestFocus();
+            if (interfaceMapa.mapSearchInput.getText().length() == 0) {
+                mostrarHistoricoPesquisas();
+            }
+        });
+        interfaceMapa.mapSearchInput.setOnFocusChangeListener((view, focado) -> {
+            if (focado && interfaceMapa.mapSearchInput.getText().length() == 0) {
+                mostrarHistoricoPesquisas();
+            }
+        });
+        interfaceMapa.mapSearchInput.setOnClickListener(view -> {
+            if (interfaceMapa.mapSearchInput.getText().length() == 0) {
+                mostrarHistoricoPesquisas();
+            }
+        });
 
         interfaceMapa.mapSearchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence texto, int inicio, int quantidade, int depois) { }
@@ -308,9 +367,16 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 int pesquisaAtual = ++numeroDaPesquisa;
                 String consulta = texto.toString().trim();
                 if (consulta.length() < 2) {
-                    interfaceMapa.searchSuggestions.setVisibility(View.GONE);
+                    if (consulta.isEmpty() && interfaceMapa.mapSearchInput.hasFocus()) {
+                        mostrarHistoricoPesquisas();
+                    } else {
+                        esconderHistoricoPesquisas();
+                    }
                     return;
                 }
+                esconderHistoricoPesquisas();
+                adaptadorDaPesquisa.clear();
+                interfaceMapa.searchSuggestions.setAdapter(adaptadorDaPesquisa);
                 pesquisaPendente = () -> pesquisarLocais(consulta, pesquisaAtual);
                 gestorPesquisa.postDelayed(pesquisaPendente, 450);
             }
@@ -332,11 +398,21 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         });
 
         interfaceMapa.searchSuggestions.setOnItemClickListener((lista, linha, posicao, id) -> {
-            if (posicao >= resultadosDaPesquisa.size()) return;
-            destinoSelecionado = resultadosDaPesquisa.get(posicao);
+            int indice = posicao - interfaceMapa.searchSuggestions.getHeaderViewsCount();
+            if (indice < 0) return;
+            if (historicoVisivel) {
+                if (indice >= historicoPesquisas.size()) return;
+                destinoSelecionado = historicoPesquisas.get(indice);
+                guardarPesquisaRecente(destinoSelecionado);
+            } else {
+                if (indice >= resultadosDaPesquisa.size()) return;
+                destinoSelecionado = resultadosDaPesquisa.get(indice);
+                guardarPesquisaRecente(destinoSelecionado);
+            }
             aEscolherDestino = true;
             interfaceMapa.mapSearchInput.setText(destinoSelecionado.nome);
             aEscolherDestino = false;
+            esconderHistoricoPesquisas();
             interfaceMapa.searchSuggestions.setVisibility(View.GONE);
             esconderTeclado();
             pedirRota();
@@ -345,6 +421,157 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         interfaceMapa.btnStartTrip.setOnClickListener(view -> iniciarViagem());
         interfaceMapa.btnEndTrip.setOnClickListener(view -> terminarViagem());
         interfaceMapa.btnDismissRoute.setOnClickListener(view -> cancelarRotaPlaneada());
+        // Evita mostrar o histórico automaticamente ao abrir o mapa.
+        interfaceMapa.mapSearchInput.clearFocus();
+        esconderHistoricoPesquisas();
+    }
+
+    // Cabeçalho simples para separar o histórico das sugestões da TomTom.
+    private void configurarCabecalhoHistorico() {
+        LinearLayout cabecalho = new LinearLayout(this);
+        cabecalho.setGravity(Gravity.CENTER_VERTICAL);
+        cabecalho.setPadding(converterDpParaPixeis(16), 0,
+                converterDpParaPixeis(8), 0);
+
+        TextView titulo = new TextView(this);
+        titulo.setText(R.string.search_history_title);
+        titulo.setTextColor(Color.rgb(95, 99, 104));
+        titulo.setTextSize(14);
+        cabecalho.addView(titulo, new LinearLayout.LayoutParams(0,
+                converterDpParaPixeis(20), 1));
+
+        cabecalhoHistorico = cabecalho;
+        cabecalhoHistorico.setVisibility(View.GONE);
+        interfaceMapa.searchSuggestions.addHeaderView(cabecalhoHistorico, null, false);
+    }
+
+    // Mostra o local e a morada; o X remove apenas esta pesquisa.
+    private final class AdaptadorPesquisasRecentes extends ArrayAdapter<TomTomApi.Local> {
+        AdaptadorPesquisasRecentes() {
+            super(MapActivity.this, R.layout.item_pesquisa_recente);
+        }
+
+        @NonNull
+        @Override
+        public View getView(int posicao, View linha, @NonNull android.view.ViewGroup pai) {
+            if (linha == null) {
+                linha = getLayoutInflater().inflate(R.layout.item_pesquisa_recente, pai, false);
+            }
+            TomTomApi.Local local = getItem(posicao);
+            if (local == null) return linha;
+
+            TextView nome = linha.findViewById(R.id.recent_search_name);
+            TextView morada = linha.findViewById(R.id.recent_search_address);
+            TextView remover = linha.findViewById(R.id.btn_remove_recent_search);
+            nome.setText(local.nome);
+            morada.setText(local.endereco);
+            morada.setVisibility(local.endereco.isEmpty() ? View.GONE : View.VISIBLE);
+            remover.setContentDescription(getString(R.string.search_remove_recent, local.nome));
+            remover.setOnClickListener(view -> removerPesquisaRecente(local));
+            return linha;
+        }
+    }
+
+    // Mostra até três pesquisas guardadas para a conta atualmente ligada.
+    private void mostrarHistoricoPesquisas() {
+        historicoPesquisas.clear();
+        historicoPesquisas.addAll(lerHistoricoPesquisas());
+        adaptadorHistorico.clear();
+        for (TomTomApi.Local local : historicoPesquisas) adaptadorHistorico.add(local);
+        if (historicoPesquisas.isEmpty()) {
+            esconderHistoricoPesquisas();
+            return;
+        }
+        historicoVisivel = true;
+        cabecalhoHistorico.setVisibility(View.VISIBLE);
+        interfaceMapa.searchSuggestions.setAdapter(adaptadorHistorico);
+        ajustarAlturaListaPesquisas(historicoPesquisas.size(), true);
+        interfaceMapa.searchSuggestions.setVisibility(View.VISIBLE);
+    }
+
+    // Ajusta a lista à quantidade de linhas, sem deixar um painel vazio grande.
+    private void ajustarAlturaListaPesquisas(int quantidade, boolean mostrarCabecalho) {
+        int altura = mostrarCabecalho ? 20 + quantidade * 64 : quantidade * 56;
+        android.view.ViewGroup.LayoutParams parametros = interfaceMapa.searchSuggestions.getLayoutParams();
+        parametros.height = converterDpParaPixeis(Math.min(altura, 240));
+        interfaceMapa.searchSuggestions.setLayoutParams(parametros);
+    }
+
+    private void esconderHistoricoPesquisas() {
+        historicoVisivel = false;
+        cabecalhoHistorico.setVisibility(View.GONE);
+        interfaceMapa.searchSuggestions.setVisibility(View.GONE);
+    }
+
+    private String chaveHistoricoPesquisas() {
+        return "historico_pesquisas_" + utilizadorLogado;
+    }
+
+    // Lê as três pesquisas recentes da memória do telemóvel.
+    private List<TomTomApi.Local> lerHistoricoPesquisas() {
+        List<TomTomApi.Local> historico = new ArrayList<>();
+        String dados = getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE)
+                .getString(chaveHistoricoPesquisas(), "[]");
+        try {
+            JSONArray json = new JSONArray(dados);
+            for (int i = 0; i < json.length() && historico.size() < 3; i++) {
+                JSONObject local = json.getJSONObject(i);
+                double latitude = local.optDouble("latitude", Double.NaN);
+                double longitude = local.optDouble("longitude", Double.NaN);
+                if (!Double.isFinite(latitude) || !Double.isFinite(longitude)) continue;
+                historico.add(new TomTomApi.Local(local.optString("nome"),
+                        local.optString("endereco"), latitude, longitude));
+            }
+        } catch (JSONException ignorado) {
+            // Um histórico inválido é ignorado; a pesquisa normal continua disponível.
+        }
+        return historico;
+    }
+
+    // Guarda o local escolhido e mantém só os três mais recentes.
+    private void guardarPesquisaRecente(TomTomApi.Local novoLocal) {
+        List<TomTomApi.Local> historico = lerHistoricoPesquisas();
+        historico.removeIf(local -> local.nome.equalsIgnoreCase(novoLocal.nome)
+                && Math.abs(local.latitude - novoLocal.latitude) < 0.0001
+                && Math.abs(local.longitude - novoLocal.longitude) < 0.0001);
+        historico.add(0, novoLocal);
+        if (historico.size() > 3) historico = new ArrayList<>(historico.subList(0, 3));
+
+        guardarHistorico(historico);
+    }
+
+    // Remove uma só pesquisa e atualiza as linhas que continuam visíveis.
+    private void removerPesquisaRecente(TomTomApi.Local removido) {
+        List<TomTomApi.Local> historico = lerHistoricoPesquisas();
+        historico.removeIf(local -> local.nome.equalsIgnoreCase(removido.nome)
+                && Math.abs(local.latitude - removido.latitude) < 0.0001
+                && Math.abs(local.longitude - removido.longitude) < 0.0001);
+        guardarHistorico(historico);
+        historicoPesquisas.clear();
+        historicoPesquisas.addAll(historico);
+        adaptadorHistorico.clear();
+        adaptadorHistorico.addAll(historico);
+        ajustarAlturaListaPesquisas(historico.size(), true);
+        if (historico.isEmpty()) esconderHistoricoPesquisas();
+    }
+
+    // Guarda a lista atualizada no perfil local desta conta.
+    private void guardarHistorico(List<TomTomApi.Local> historico) {
+        JSONArray json = new JSONArray();
+        for (TomTomApi.Local local : historico) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("nome", local.nome);
+                item.put("endereco", local.endereco);
+                item.put("latitude", local.latitude);
+                item.put("longitude", local.longitude);
+                json.put(item);
+            } catch (JSONException ignorado) {
+                // Ignora só o item que não pôde ser convertido em JSON.
+            }
+        }
+        getSharedPreferences("RoadGuardPrefs", Context.MODE_PRIVATE).edit()
+                .putString(chaveHistoricoPesquisas(), json.toString()).apply();
     }
 
     private final List<TomTomApi.Local> resultadosDaPesquisa = new ArrayList<>();
@@ -365,6 +592,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                     adaptadorDaPesquisa.add(texto);
                 }
                 adaptadorDaPesquisa.notifyDataSetChanged();
+                ajustarAlturaListaPesquisas(locais.size(), false);
                 interfaceMapa.searchSuggestions.setVisibility(locais.isEmpty() ? View.GONE : View.VISIBLE);
                 if (locais.isEmpty()) Toast.makeText(MapActivity.this, R.string.search_not_found, Toast.LENGTH_SHORT).show();
             }
@@ -453,7 +681,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         interfaceMapa.routePanel.setVisibility(View.GONE);
         interfaceMapa.navigationBanner.setVisibility(View.GONE);
         interfaceMapa.mapSearchBar.setVisibility(View.VISIBLE);
+        aEscolherDestino = true;
         interfaceMapa.mapSearchInput.setText("");
+        aEscolherDestino = false;
+        esconderHistoricoPesquisas();
         if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
         atualizarPosicaoDoBotaoAlerta();
         atualizarPosicaoDoBotaoCentralizar();
@@ -463,6 +694,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void iniciarViagem() {
         if (rotaPlaneada == null) return;
         viagemIniciada = true;
+        seguirLocalNaViagem = true;
         indiceAtualDaRota = 0;
         pontosDaViagem.clear();
         for (GeoPoint ponto : rotaPlaneada.pontos) {
@@ -495,10 +727,11 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         atualizarAlertasNoMapa();
     }
 
-    // Atualiza a distância restante e a próxima manobra conforme o GPS avança na rota.
+    // Atualiza o caminho e as instruções conforme a posição atual do GPS.
     private void atualizarOrientacaoDaViagem(Location localizacao) {
         if (rotaPlaneada == null || rotaPlaneada.pontos.isEmpty()) return;
-        int inicio = Math.max(0, indiceAtualDaRota - 3);
+        // Procura também atrás do índice atual, para acompanhar quem volta pelo caminho.
+        int inicio = Math.max(0, indiceAtualDaRota - 200);
         int fim = Math.min(rotaPlaneada.pontos.size(), indiceAtualDaRota + 201);
         int pontoMaisProximo = indiceAtualDaRota;
         float menorDistancia = Float.MAX_VALUE;
@@ -526,8 +759,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 }
             }
         }
-        indiceAtualDaRota = Math.max(indiceAtualDaRota, pontoMaisProximo);
-        if (linhaDaRota != null && indiceAtualDaRota < rotaPlaneada.pontos.size() - 1) {
+        // O índice pode avançar ou recuar conforme a posição real do utilizador.
+        indiceAtualDaRota = pontoMaisProximo;
+        if (linhaDaRota != null) {
+            // Usa só os pontos da rota TomTom para a linha não cortar caminho fora da estrada.
             linhaDaRota.setCoordinates(new ArrayList<>(
                     rotaPlaneada.pontos.subList(indiceAtualDaRota, rotaPlaneada.pontos.size())));
         }
@@ -558,6 +793,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     // Termina a viagem e limpa a rota do mapa.
     private void terminarViagem() {
         viagemIniciada = false;
+        seguirLocalNaViagem = false;
         pontosDaViagem.clear();
         atualizarAlertasNoMapa();
         if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
@@ -623,6 +859,8 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             Toast.makeText(this, R.string.location_unavailable, Toast.LENGTH_SHORT).show();
             return;
         }
+        // O botão retoma o seguimento automático depois de explorar o mapa.
+        seguirLocalNaViagem = true;
         mapaTomTom.moveCamera(new CameraOptions(posicaoAtual, 16.0, 0.0, 0.0, 45.0));
     }
 
@@ -640,7 +878,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         finish();
     }
 
-    // Informa o mapa de que a Activity vai ficar visível
+    // Informa o mapa de que a Activity vai ficar visível.
     @Override
     protected void onStart() {
         super.onStart();
@@ -1252,8 +1490,11 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         atualizarAlertasNoMapa();
         if (viagemIniciada) {
             atualizarOrientacaoDaViagem(location);
-            double orientacao = location.hasBearing() && location.getSpeed() > 1.5f ? location.getBearing() : 0.0;
-            mapaTomTom.moveCamera(new CameraOptions(posicaoAtual, 16.0, 0.0, orientacao, 45.0));
+            if (seguirLocalNaViagem) {
+                double orientacao = location.hasBearing() && location.getSpeed() > 1.5f
+                        ? location.getBearing() : 0.0;
+                mapaTomTom.moveCamera(new CameraOptions(posicaoAtual, 16.0, 0.0, orientacao, 45.0));
+            }
         }
     }
 
