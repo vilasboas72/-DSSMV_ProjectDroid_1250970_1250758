@@ -19,6 +19,15 @@ public class VerificadorDeAlertasTest {
         assertEquals(-1, VerificadorDeAlertas.distanciaAteAlerta(
                 reta(), 0, 100 * METRO, 0, 700 * METRO), 0);
     }
+    @Test public void pedeConfirmacaoApenasDepoisDePassarEProximoNaRota() {
+        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 0, 900 * METRO, 0, 1000 * METRO));
+        assertTrue(VerificadorDeAlertas.acabouDePassar(reta(), 0, 1050 * METRO, 0, 1000 * METRO));
+        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 0, 1200 * METRO, 0, 1000 * METRO));
+        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 100 * METRO, 1050 * METRO,
+                0, 1000 * METRO));
+        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 0, 1050 * METRO,
+                80 * METRO, 1000 * METRO));
+    }
     @Test public void naoAvisaPerigoJaUltrapassado() {
         assertEquals(-1, VerificadorDeAlertas.distanciaAteAlerta(
                 reta(), 0, 1000 * METRO, 0, 900 * METRO), 0);

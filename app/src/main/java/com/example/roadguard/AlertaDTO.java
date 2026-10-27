@@ -1,5 +1,8 @@
 package com.example.roadguard;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** Dados de um perigo guardado no nó Alerta. O identificador é a chave da Firebase. */
 public class AlertaDTO {
     private String id;
@@ -10,6 +13,8 @@ public class AlertaDTO {
     private double longitude;
     private long dataCriacao;
     private boolean ativo;
+    // Uma entrada por conta: true = ainda existe; false = já não existe.
+    private Map<String, Boolean> confirmacoes = new HashMap<>();
 
     public AlertaDTO() { }
 
@@ -27,6 +32,28 @@ public class AlertaDTO {
     public void setLongitude(double longitude) { this.longitude = longitude; }
     public long getDataCriacao() { return dataCriacao; }
     public void setDataCriacao(long dataCriacao) { this.dataCriacao = dataCriacao; }
-    public boolean isAtivo() { return ativo; }
+    public boolean isAtivo() { return ativo && !foiResolvido(); }
     public void setAtivo(boolean ativo) { this.ativo = ativo; }
+
+    public boolean jaConfirmou(String utilizador) {
+        return confirmacoes != null && confirmacoes.containsKey(utilizador);
+    }
+
+    public void guardarConfirmacao(String utilizador, boolean aindaExiste) {
+        if (confirmacoes == null) confirmacoes = new HashMap<>();
+        confirmacoes.put(utilizador, aindaExiste);
+    }
+
+    public boolean foiResolvido() {
+        int existe = 0;
+        int naoExiste = 0;
+        if (confirmacoes == null) return false;
+        for (Map.Entry<String, Boolean> voto : confirmacoes.entrySet()) {
+            // O autor não participa na confirmação do próprio alerta.
+            if (voto.getKey().equals(utilizadorId) || voto.getKey().isEmpty()) continue;
+            if (Boolean.TRUE.equals(voto.getValue())) existe++;
+            else if (Boolean.FALSE.equals(voto.getValue())) naoExiste++;
+        }
+        return naoExiste >= 3 && naoExiste > existe;
+    }
 }

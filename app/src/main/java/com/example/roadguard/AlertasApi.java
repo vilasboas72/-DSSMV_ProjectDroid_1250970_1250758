@@ -90,6 +90,26 @@ final class AlertasApi {
         });
     }
 
+    void confirmar(String id, String utilizador, boolean aindaExiste,
+                   Resposta<Boolean> respostaPedido) {
+        tarefasDeRede.execute(() -> {
+            try {
+                AlertaDTO alerta = lerAlerta(id, ClienteRetrofit.executar(
+                        ClienteRetrofit.firebase.obterAlerta(id)));
+                if (alerta == null || !alerta.isAtivo() || utilizador.isEmpty()
+                        || utilizador.equals(alerta.getUtilizadorId()) || alerta.jaConfirmou(utilizador)) {
+                    entregar(() -> respostaPedido.aoConcluir(false));
+                    return;
+                }
+                ClienteRetrofit.executar(ClienteRetrofit.firebase.confirmarAlerta(
+                        id, utilizador, aindaExiste));
+                entregar(() -> respostaPedido.aoConcluir(true));
+            } catch (Exception erro) {
+                falhar(respostaPedido, erro);
+            }
+        });
+    }
+
     /** Lê apenas o nome deste utilizador, sem obter emails ou palavras-passe. */
     void obterNomeDoAutor(String idUtilizador, Resposta<String> respostaPedido) {
         tarefasDeRede.execute(() -> {

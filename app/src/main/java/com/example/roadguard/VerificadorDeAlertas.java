@@ -73,6 +73,18 @@ final class VerificadorDeAlertas {
         return distancia;
     }
 
+    // A pergunta só pode aparecer nos primeiros 150 m depois do perigo, na mesma rota.
+    static boolean acabouDePassar(List<double[]> rota, double latitude, double longitude,
+                                  double latitudeAlerta, double longitudeAlerta) {
+        if (rota.size() < 2) return false;
+        PosicaoNaRota utilizador = projetarNaRota(rota, latitude, longitude);
+        PosicaoNaRota alerta = projetarNaRota(rota, latitudeAlerta, longitudeAlerta);
+        double distanciaDepois = utilizador.metrosDesdeInicio - alerta.metrosDesdeInicio;
+        return utilizador.distanciaLateral <= TOLERANCIA_GPS
+                && alerta.distanciaLateral <= TOLERANCIA_ALERTA
+                && distanciaDepois > 0 && distanciaDepois <= 150;
+    }
+
     // Procura o segmento da estrada mais próximo da coordenada.
     // Cada double[] da lista contém {latitude, longitude}.
     private static PosicaoNaRota projetarNaRota(List<double[]> rota, double latitude, double longitude) {

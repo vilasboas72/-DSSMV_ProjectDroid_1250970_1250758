@@ -8,6 +8,7 @@ import retrofit2.http.Body;
 import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Path;
 
 /** Endereços e verbos HTTP definidos pela equipa para a API REST da Firebase. */
@@ -30,6 +31,14 @@ interface FirebaseServico {
 
     @DELETE("Alerta/{id}.json")
     Call<Void> eliminarAlerta(@Path("id") String id);
+
+    @GET("Alerta/{id}.json")
+    Call<JsonElement> obterAlerta(@Path("id") String id);
+
+    // PUT usa o id da conta: repetir o pedido não acrescenta outro voto.
+    @PUT("Alerta/{id}/confirmacoes/{utilizador}.json")
+    Call<Boolean> confirmarAlerta(@Path("id") String id,
+            @Path("utilizador") String utilizador, @Body Boolean aindaExiste);
 
     @GET("Zonas_Favoritas/{utilizador}.json")
     Call<Map<String, JsonElement>> listarZonas(@Path("utilizador") String utilizador);

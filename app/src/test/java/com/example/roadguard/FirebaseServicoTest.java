@@ -87,6 +87,21 @@ public class FirebaseServicoTest {
     @Test public void noVazioDaFirebaseDevolveNull() throws Exception {
         assertNull(ClienteRetrofit.executar(servico.listarAlertas()));
     }
+    @Test public void putGuardaUmaRespostaPorContaSemAlterarOutrosVotos() throws Exception {
+        resposta = "false";
+        assertFalse(ClienteRetrofit.executar(servico.confirmarAlerta("alerta1", "uid2", false)));
+        assertEquals("PUT", metodo);
+        assertEquals("/Alerta/alerta1/confirmacoes/uid2.json", caminho);
+        assertEquals("false", corpo);
+    }
+    @Test public void getDoAlertaLeConfirmacoesComoBooleanos() throws Exception {
+        resposta = "{\"ativo\":true,\"confirmacoes\":{\"uid2\":false,\"uid3\":true}}";
+        AlertaDTO alerta = ClienteRetrofit.gson.fromJson(
+                ClienteRetrofit.executar(servico.obterAlerta("alerta1")), AlertaDTO.class);
+        assertEquals("/Alerta/alerta1.json", caminho);
+        assertTrue(alerta.jaConfirmou("uid2"));
+        assertTrue(alerta.isAtivo());
+    }
     @Test public void erroDePermissaoNaoETratadoComoSucesso() throws Exception {
         estado = 403;
         try {

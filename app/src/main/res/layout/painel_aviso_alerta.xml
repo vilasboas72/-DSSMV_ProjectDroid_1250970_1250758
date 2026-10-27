@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="vertical" android:background="@drawable/bg_aviso_alerta"
     android:elevation="12dp" android:visibility="gone">
@@ -24,5 +25,22 @@
             android:textColor="#171717" android:contentDescription="@string/alert_popup_close"
             android:background="?android:attr/selectableItemBackground" android:clickable="true"
             android:focusable="true" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/aviso_confirmacoes"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:visibility="gone"
+        android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingBottom="8dp">
+        <com.google.android.material.button.MaterialButton android:id="@+id/aviso_ainda_existe"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:minHeight="48dp"
+            android:text="@string/aviso_ainda_existe" android:textAllCaps="false"
+            android:textColor="#171717" app:backgroundTint="#FFFFFF"
+            app:strokeColor="#777777" app:strokeWidth="1dp" app:cornerRadius="0dp" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/aviso_ja_nao_existe"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:minHeight="48dp" android:layout_marginStart="8dp"
+            android:text="@string/aviso_ja_nao_existe" android:textAllCaps="false"
+            android:textColor="#171717" app:backgroundTint="#FFFFFF"
+            app:strokeColor="#777777" app:strokeWidth="1dp" app:cornerRadius="0dp" />
     </LinearLayout>
 </LinearLayout>

@@ -153,6 +153,16 @@ public class AvisosNaRotaTest {
                 chamar(atividade, "atualizarAlertasNoMapa");
                 assertEquals("Um aviso fechado não deve reaparecer na mesma viagem", View.GONE,
                         atividade.findViewById(R.id.painel_aviso).getVisibility());
+                // Passa 50 m depois do perigo. Não toca nas respostas: o teste não escreve na Firebase.
+                atualizarGps(atividade, LATITUDE + 0.00445);
+                assertEquals(View.VISIBLE, atividade.findViewById(R.id.painel_aviso).getVisibility());
+                assertEquals(View.VISIBLE, atividade.findViewById(R.id.aviso_confirmacoes).getVisibility());
+                assertTrue(((TextView) atividade.findViewById(R.id.aviso_contexto))
+                        .getText().toString().contains("ainda existe"));
+                atividade.findViewById(R.id.aviso_fechar).performClick();
+                chamar(atividade, "atualizarAlertasNoMapa");
+                assertEquals("Fechar a pergunta não deve fazê-la reaparecer na mesma passagem", View.GONE,
+                        atividade.findViewById(R.id.painel_aviso).getVisibility());
                 chamar(atividade, "terminarViagem");
                 assertTrue(((Map<?, ?>) ler(atividade, "marcadoresDeAlertas")).containsKey("teste_zona_distante"));
                 assertEquals(View.GONE, atividade.findViewById(R.id.painel_aviso).getVisibility());

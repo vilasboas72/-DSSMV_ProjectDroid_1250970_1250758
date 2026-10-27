@@ -167,7 +167,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         painelAvisos = new PainelAvisos(this, findViewById(R.id.painel_aviso), () -> {
             atualizarPosicaoDoBotaoAlerta();
             atualizarPosicaoDoBotaoCentralizar();
-        });
+        }, this::confirmarAlerta);
         configurarMenuDoMapa();
 
         String chaveApi;
@@ -1062,7 +1062,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         quantidadeCirculosDesenhados = 0;
     }
 
-    // Só avisa durante uma viagem, com GPS recente e um perigo à frente até 500 m.
+    // Durante a viagem: avisa até 500 m antes e pede confirmação até 150 m depois.
     private void verificarAvisosDeAlertas() {
         if (painelAvisos == null || !mapaVisivel) return;
         List<PainelAvisos.Aviso> avisos = new ArrayList<>();
@@ -1072,17 +1072,46 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 double distancia = VerificadorDeAlertas.distanciaAteAlerta(pontosDaViagem,
                         posicaoAtual.getLatitude(), posicaoAtual.getLongitude(),
                         alerta.getLatitude(), alerta.getLongitude());
-                if (distancia < 0) continue;
+                boolean pedirConfirmacao = false;
+                if (distancia < 0) {
+                    pedirConfirmacao = painelAvisos.foiAvisado(alerta.getId())
+                            && !utilizadorLogado.equals(alerta.getUtilizadorId())
+                            && !alerta.jaConfirmou(utilizadorLogado)
+                            && VerificadorDeAlertas.acabouDePassar(pontosDaViagem,
+                            posicaoAtual.getLatitude(), posicaoAtual.getLongitude(),
+                            alerta.getLatitude(), alerta.getLongitude());
+                    if (!pedirConfirmacao) continue;
+                    distancia = 0; // A confirmação tem prioridade sobre os perigos à frente.
+                }
 
                 // Coloca o aviso antes dos que estão mais longe. É um ciclo normal de ordenação.
                 int posicao = 0;
                 while (posicao < avisos.size() && avisos.get(posicao).distancia < distancia) {
                     posicao++;
                 }
-                avisos.add(posicao, new PainelAvisos.Aviso(alerta, distancia));
+                avisos.add(posicao, new PainelAvisos.Aviso(alerta, distancia, pedirConfirmacao));
             }
         }
         painelAvisos.atualizar(avisos);
+    }
+
+    private void confirmarAlerta(AlertaDTO alerta, boolean aindaExiste,
+                                AlertasApi.Resposta<Boolean> resposta) {
+        apiAlertas.confirmar(alerta.getId(), utilizadorLogado, aindaExiste,
+                new AlertasApi.Resposta<Boolean>() {
+                    @Override public void aoConcluir(Boolean guardado) {
+                        if (guardado) {
+                            AlertaDTO recebido = alertasRecebidos.get(alerta.getId());
+                            if (recebido != null) recebido.guardarConfirmacao(utilizadorLogado, aindaExiste);
+                        }
+                        resposta.aoConcluir(guardado);
+                        atualizarAlertasNoMapa();
+                        carregarAlertas();
+                    }
+                    @Override public void aoFalhar(AlertasApi.Erro erro) {
+                        resposta.aoFalhar(erro);
+                    }
+                });
     }
 
     // O aviso fica por cima do painel inferior com destino e tempo de viagem.
