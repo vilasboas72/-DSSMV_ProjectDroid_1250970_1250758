@@ -67,9 +67,7 @@ final class AlertasApi {
                 dataServidor.addProperty(".sv", "timestamp");
                 json.add("dataCriacao", dataServidor);
                 json.addProperty("ativo", true);
-                String id = ClienteRetrofit.executar(ClienteRetrofit.firebase.criarAlerta(
-                        json))
-                        .get("name").getAsString();
+                String id = ClienteRetrofit.executar(ClienteRetrofit.firebase.criarAlerta(json)).get("name").getAsString();
                 if (id.isEmpty()) throw new IllegalStateException("Identificador em falta");
                 entregar(() -> respostaPedido.aoConcluir(id));
             } catch (Exception e) {
@@ -90,19 +88,16 @@ final class AlertasApi {
         });
     }
 
-    void confirmar(String id, String utilizador, boolean aindaExiste,
-                   Resposta<Boolean> respostaPedido) {
+    void confirmar(String id, String utilizador, boolean aindaExiste, Resposta<Boolean> respostaPedido) {
         tarefasDeRede.execute(() -> {
             try {
-                AlertaDTO alerta = lerAlerta(id, ClienteRetrofit.executar(
-                        ClienteRetrofit.firebase.obterAlerta(id)));
+                AlertaDTO alerta = lerAlerta(id, ClienteRetrofit.executar(ClienteRetrofit.firebase.obterAlerta(id)));
                 if (alerta == null || !alerta.isAtivo() || utilizador.isEmpty()
                         || utilizador.equals(alerta.getUtilizadorId()) || alerta.jaConfirmou(utilizador)) {
                     entregar(() -> respostaPedido.aoConcluir(false));
                     return;
                 }
-                ClienteRetrofit.executar(ClienteRetrofit.firebase.confirmarAlerta(
-                        id, utilizador, aindaExiste));
+                ClienteRetrofit.executar(ClienteRetrofit.firebase.confirmarAlerta(id, utilizador, aindaExiste));
                 entregar(() -> respostaPedido.aoConcluir(true));
             } catch (Exception erro) {
                 falhar(respostaPedido, erro);
