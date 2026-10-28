@@ -1,6 +1,7 @@
 package com.example.roadguard;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -16,6 +17,7 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.graphics.PointF;
@@ -110,6 +112,9 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private boolean viagemIniciada;
     // Fica falso enquanto a pessoa explora o mapa durante a viagem.
     private boolean seguirLocalNaViagem = true;
+    private boolean aRecalcularRota;
+    private int posicoesForaDaRota;
+    private long ultimaRequisicaoDeRota;
     private boolean aEscolherDestino;
     private int indiceAtualDaRota;
     private AlertasApi apiAlertas;
@@ -117,6 +122,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private boolean mapaVisivel;
     private boolean aLerAlertas;
     private boolean erroDeAlertasApresentado;
+    private int falhasConsecutivasDeAlertas;
     private Dialog dialogoDeAlerta;
     private Dialog painelDetalheAlerta;
     private CategoriaAlerta categoriaEscolhida;
@@ -214,13 +220,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 OnlineCachePolicy.Default.INSTANCE,
                 false);
         vistaDoMapa = new MapView(this, opcoesDoMapa);
-        vistaDoMapa.setOnTouchListener((vista, evento) -> {
-            if (viagemIniciada && (evento.getActionMasked() == MotionEvent.ACTION_MOVE
-                    || evento.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN)) {
-                seguirLocalNaViagem = false;
-            }
-            return false; // Deixa o TomTom receber o gesto para mover e ampliar o mapa.
-        });
+        configurarGestosDoMapa();
         // Mantém o fundo do nosso botão e usa o desenho original de localização da TomTom.
         ((View) vistaDoMapa.getCompassButton()).setVisibility(View.INVISIBLE);
         ((View) vistaDoMapa.getCurrentLocationButton()).setVisibility(View.INVISIBLE);
@@ -239,7 +239,21 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         vistaDoMapa.getMapAsync(this);
     }
 
+    // Só observa os gestos para parar o seguimento; o mapa continua a receber o toque.
+    @SuppressLint("ClickableViewAccessibility")
+    // Permite explorar o mapa com o dedo durante a viagem.
+    private void configurarGestosDoMapa() {
+        vistaDoMapa.setOnTouchListener((vista, evento) -> {
+            if (viagemIniciada && (evento.getActionMasked() == MotionEvent.ACTION_MOVE
+                    || evento.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN)) {
+                seguirLocalNaViagem = false;
+            }
+            return false; // Deixa o TomTom receber o gesto para mover e ampliar o mapa.
+        });
+    }
+
     // Mantém o botão sobre o mapa e afastado da barra de estado e do recorte do ecrã.
+    // Liga o menu aos ecrãs de zonas favoritas e às opções da conta.
     private void configurarMenuDoMapa() {
         int margin = Math.round(16 * getResources().getDisplayMetrics().density);
         ViewCompat.setOnApplyWindowInsetsListener(interfaceMapa.getRoot(), (view, windowInsets) -> {
@@ -334,6 +348,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     // Liga a pesquisa dinâmica e os botões para iniciar ou terminar uma viagem.
+    // Prepara a pesquisa de locais e os controlos da rota.
     private void configurarPesquisaERota() {
         adaptadorDaPesquisa = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
         adaptadorHistorico = new AdaptadorPesquisasRecentes();
@@ -383,16 +398,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         });
 
         interfaceMapa.btnClearSearch.setOnClickListener(view -> {
-            if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
-            numeroDaPesquisa++;
-            destinoSelecionado = null;
-            rotaPlaneada = null;
-            linhaDaRota = null;
-            resultadosDaPesquisa.clear();
-            adaptadorDaPesquisa.clear();
-            interfaceMapa.searchSuggestions.setVisibility(View.GONE);
-            interfaceMapa.routePanel.setVisibility(View.GONE);
-            if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
+            limparPesquisaERota();
             interfaceMapa.mapSearchInput.setText("");
             atualizarPosicaoDoBotaoCentralizar();
         });
@@ -473,11 +479,11 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     // Mostra até três pesquisas guardadas para a conta atualmente ligada.
+    // Mostra as pesquisas recentes da conta atual.
     private void mostrarHistoricoPesquisas() {
         historicoPesquisas.clear();
         historicoPesquisas.addAll(lerHistoricoPesquisas());
-        adaptadorHistorico.clear();
-        for (TomTomApi.Local local : historicoPesquisas) adaptadorHistorico.add(local);
+        atualizarAdaptador(adaptadorHistorico, historicoPesquisas);
         if (historicoPesquisas.isEmpty()) {
             esconderHistoricoPesquisas();
             return;
@@ -487,6 +493,13 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         interfaceMapa.searchSuggestions.setAdapter(adaptadorHistorico);
         ajustarAlturaListaPesquisas(historicoPesquisas.size(), true);
         interfaceMapa.searchSuggestions.setVisibility(View.VISIBLE);
+    }
+
+    // Substitui as linhas da lista por uma lista nova.
+    private <T> void atualizarAdaptador(ArrayAdapter<T> adaptador, List<T> itens) {
+        adaptador.clear();
+        for (T item : itens) adaptador.add(item);
+        adaptador.notifyDataSetChanged();
     }
 
     // Ajusta a lista à quantidade de linhas, sem deixar um painel vazio grande.
@@ -529,6 +542,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     // Guarda o local escolhido e mantém só os três mais recentes.
+    // Guarda um local escolhido no histórico de pesquisas.
     private void guardarPesquisaRecente(TomTomApi.Local novoLocal) {
         List<TomTomApi.Local> historico = lerHistoricoPesquisas();
         historico.removeIf(local -> local.nome.equalsIgnoreCase(novoLocal.nome)
@@ -541,6 +555,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     // Remove uma só pesquisa e atualiza as linhas que continuam visíveis.
+    // Apaga uma pesquisa específica do histórico.
     private void removerPesquisaRecente(TomTomApi.Local removido) {
         List<TomTomApi.Local> historico = lerHistoricoPesquisas();
         historico.removeIf(local -> local.nome.equalsIgnoreCase(removido.nome)
@@ -549,8 +564,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         guardarHistorico(historico);
         historicoPesquisas.clear();
         historicoPesquisas.addAll(historico);
-        adaptadorHistorico.clear();
-        adaptadorHistorico.addAll(historico);
+        atualizarAdaptador(adaptadorHistorico, historico);
         ajustarAlturaListaPesquisas(historico.size(), true);
         if (historico.isEmpty()) esconderHistoricoPesquisas();
     }
@@ -577,6 +591,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private final List<TomTomApi.Local> resultadosDaPesquisa = new ArrayList<>();
 
     // Aguarda o GPS e pede ao TomTom opções próximas do utilizador.
+    // Procura locais com o texto escrito pelo utilizador.
     private void pesquisarLocais(String consulta, int pesquisaAtual) {
         // Se o GPS ainda não respondeu, pesquisa sem forçar a localização do.
         apiTomTom.pesquisarLocais(consulta, posicaoAtual, new TomTomApi.Resposta<>() {
@@ -585,13 +600,13 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 if (pesquisaAtual != numeroDaPesquisa) return;
                 resultadosDaPesquisa.clear();
                 resultadosDaPesquisa.addAll(locais);
-                adaptadorDaPesquisa.clear();
+                List<String> opcoes = new ArrayList<>();
                 for (TomTomApi.Local local : locais) {
                     String texto = local.nome;
                     if (!local.endereco.isEmpty() && !local.endereco.equals(local.nome)) texto += " · " + local.endereco;
-                    adaptadorDaPesquisa.add(texto);
+                    opcoes.add(texto);
                 }
-                adaptadorDaPesquisa.notifyDataSetChanged();
+                atualizarAdaptador(adaptadorDaPesquisa, opcoes);
                 ajustarAlturaListaPesquisas(locais.size(), false);
                 interfaceMapa.searchSuggestions.setVisibility(locais.isEmpty() ? View.GONE : View.VISIBLE);
                 if (locais.isEmpty()) Toast.makeText(MapActivity.this, R.string.search_not_found, Toast.LENGTH_SHORT).show();
@@ -608,6 +623,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     // Pede uma rota de carro entre a localização GPS atual e o local escolhido.
+    // Pede à TomTom uma rota de carro até ao destino escolhido.
     private void pedirRota() {
         if (posicaoAtual == null || destinoSelecionado == null) {
             Toast.makeText(this, R.string.route_needs_location, Toast.LENGTH_SHORT).show();
@@ -628,20 +644,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                     return;
                 }
                 rotaPlaneada = rota;
-                mapaTomTom.removePolylines("rota_planeada");
-                PolylineOptions opcoesDaLinha = new PolylineOptions(
-                        rota.pontos,
-                        Color.rgb(26, 115, 232),
-                        java.util.Collections.singletonList(new WidthByZoom(8.0, 15.0)),
-                        Color.WHITE,
-                        java.util.Collections.singletonList(new WidthByZoom(1.5, 15.0)),
-                        PONTA_ARREDONDADA,
-                        PONTA_ARREDONDADA,
-                        false,
-                        "rota_planeada",
-                        null,
-                        null); // Parâmetro adicional do construtor Kotlin quando usado em Java.
-                linhaDaRota = mapaTomTom.addPolyline(opcoesDaLinha);
+                desenharLinhaDaRota();
                 mostrarResumoDaRota();
                 interfaceMapa.btnStartTrip.setEnabled(true);
                 double centroLat = (posicaoAtual.getLatitude() + destinoPedido.latitude) / 2.0;
@@ -660,16 +663,37 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         });
     }
 
+    // Desenha no mapa a rota recebida da TomTom.
+    private void desenharLinhaDaRota() {
+        if (mapaTomTom == null || rotaPlaneada == null) return;
+        mapaTomTom.removePolylines("rota_planeada");
+        PolylineOptions opcoes = new PolylineOptions(
+                rotaPlaneada.pontos,
+                Color.rgb(26, 115, 232),
+                java.util.Collections.singletonList(new WidthByZoom(8.0, 15.0)),
+                Color.WHITE,
+                java.util.Collections.singletonList(new WidthByZoom(1.5, 15.0)),
+                PONTA_ARREDONDADA,
+                PONTA_ARREDONDADA,
+                false,
+                "rota_planeada",
+                null,
+                null);
+        linhaDaRota = mapaTomTom.addPolyline(opcoes);
+    }
+
+    // Apresenta a distância e o tempo estimado da rota.
     private void mostrarResumoDaRota() {
         String distancia = rotaPlaneada.distanciaMetros >= 1000
                 ? String.format(Locale.getDefault(), "%.1f km", rotaPlaneada.distanciaMetros / 1000.0)
                 : rotaPlaneada.distanciaMetros + " m";
         int minutos = Math.max(1, (rotaPlaneada.duracaoSegundos + 59) / 60);
-        interfaceMapa.routeSummary.setText(getString(R.string.route_summary_format, distancia, String.valueOf(minutos)));
+        interfaceMapa.routeSummary.setText(
+                getString(R.string.route_summary_format, distancia, minutos));
     }
 
-    // Fecha os detalhes e apaga a rota antes de começar a viagem.
-    private void cancelarRotaPlaneada() {
+    // Apaga os dados da pesquisa e a rota planeada.
+    private void limparPesquisaERota() {
         if (pesquisaPendente != null) gestorPesquisa.removeCallbacks(pesquisaPendente);
         numeroDaPesquisa++;
         destinoSelecionado = null;
@@ -679,22 +703,31 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         adaptadorDaPesquisa.clear();
         interfaceMapa.searchSuggestions.setVisibility(View.GONE);
         interfaceMapa.routePanel.setVisibility(View.GONE);
+        if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
+    }
+
+    // Fecha os detalhes e apaga a rota antes de começar a viagem.
+    private void cancelarRotaPlaneada() {
+        limparPesquisaERota();
         interfaceMapa.navigationBanner.setVisibility(View.GONE);
         interfaceMapa.mapSearchBar.setVisibility(View.VISIBLE);
         aEscolherDestino = true;
         interfaceMapa.mapSearchInput.setText("");
         aEscolherDestino = false;
         esconderHistoricoPesquisas();
-        if (mapaTomTom != null) mapaTomTom.removePolylines("rota_planeada");
         atualizarPosicaoDoBotaoAlerta();
         atualizarPosicaoDoBotaoCentralizar();
     }
 
     // Começa o modo de viagem e apresenta a primeira indicação da TomTom.
+    // Inicia a navegação e acompanha a posição GPS.
     private void iniciarViagem() {
         if (rotaPlaneada == null) return;
         viagemIniciada = true;
         seguirLocalNaViagem = true;
+        aRecalcularRota = false;
+        posicoesForaDaRota = 0;
+        ultimaRequisicaoDeRota = 0;
         indiceAtualDaRota = 0;
         pontosDaViagem.clear();
         for (GeoPoint ponto : rotaPlaneada.pontos) {
@@ -759,6 +792,15 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 }
             }
         }
+
+        // Se nos afastarmos da estrada em duas leituras GPS, pede uma nova rota.
+        if (menorDistancia > 60) posicoesForaDaRota++;
+        else posicoesForaDaRota = 0;
+        if (posicoesForaDaRota >= 2) {
+            if (!aRecalcularRota) recalcularRota(localizacao);
+            return;
+        }
+
         // O índice pode avançar ou recuar conforme a posição real do utilizador.
         indiceAtualDaRota = pontoMaisProximo;
         if (linhaDaRota != null) {
@@ -785,14 +827,55 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         interfaceMapa.navigationInstruction.setText(restantes < 60 ? R.string.route_arrival : R.string.route_keep_following);
     }
 
+    // Pede à TomTom um novo percurso desde a posição GPS atual até ao mesmo destino.
+    private void recalcularRota(Location localizacao) {
+        long agora = SystemClock.elapsedRealtime();
+        if (!viagemIniciada || destinoSelecionado == null || aRecalcularRota
+                || agora - ultimaRequisicaoDeRota < 15000) return;
+
+        aRecalcularRota = true;
+        ultimaRequisicaoDeRota = agora;
+        posicoesForaDaRota = 0;
+        TomTomApi.Local destino = destinoSelecionado;
+        interfaceMapa.navigationInstruction.setText(R.string.route_recalculating);
+
+        GeoPoint origem = new GeoPoint(localizacao.getLatitude(), localizacao.getLongitude());
+        apiTomTom.calcularRota(origem, destino, new TomTomApi.Resposta<>() {
+            @Override
+            public void aoConcluir(TomTomApi.Rota novaRota) {
+                aRecalcularRota = false;
+                if (!viagemIniciada || destinoSelecionado != destino) return;
+                if (novaRota.pontos.size() < 2 || mapaTomTom == null) {
+                    aoFalhar();
+                    return;
+                }
+                rotaPlaneada = novaRota;
+                indiceAtualDaRota = 0;
+                desenharLinhaDaRota();
+                atualizarOrientacaoDaViagem(localizacao);
+            }
+
+            @Override
+            public void aoFalhar() {
+                aRecalcularRota = false;
+                if (viagemIniciada && destinoSelecionado == destino) {
+                    interfaceMapa.navigationInstruction.setText(R.string.route_recalculate_failed);
+                }
+            }
+        });
+    }
+
     private String formatarDistancia(double metros) {
         return metros >= 1000
                 ? String.format(Locale.getDefault(), "%.1f km", metros / 1000.0)
                 : Math.round(metros / 10.0) * 10 + " m";
     }
     // Termina a viagem e limpa a rota do mapa.
+    // Termina a navegação e limpa os dados da viagem.
     private void terminarViagem() {
         viagemIniciada = false;
+        aRecalcularRota = false;
+        posicoesForaDaRota = 0;
         seguirLocalNaViagem = false;
         pontosDaViagem.clear();
         atualizarAlertasNoMapa();
@@ -971,6 +1054,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         pedirLocalizacaoDoUtilizador();
     }
 
+    // Recebe do outro ecrã as zonas favoritas a mostrar.
     private void lerZonaFavoritaDoIntent(Intent intent) {
         // O ecrã anterior envia listas quando foram escolhidas várias zonas.
         double[] latitudes = intent.getDoubleArrayExtra("zonas_latitudes");
@@ -1098,7 +1182,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void confirmarAlerta(AlertaDTO alerta, boolean aindaExiste,
                                 AlertasApi.Resposta<Boolean> resposta) {
         apiAlertas.confirmar(alerta.getId(), utilizadorLogado, aindaExiste,
-                new AlertasApi.Resposta<Boolean>() {
+                new AlertasApi.Resposta<>() {
                     @Override public void aoConcluir(Boolean guardado) {
                         if (guardado) {
                             AlertaDTO recebido = alertasRecebidos.get(alerta.getId());
@@ -1141,6 +1225,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             @Override public void aoConcluir(List<AlertaDTO> alertas) {
                 aLerAlertas = false;
                 erroDeAlertasApresentado = false;
+                falhasConsecutivasDeAlertas = 0;
                 if (!mapaVisivel || isFinishing() || isDestroyed()) return;
                 alertasRecebidos.clear();
                 for (AlertaDTO alerta : alertas) alertasRecebidos.put(alerta.getId(), alerta);
@@ -1148,7 +1233,12 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             }
             @Override public void aoFalhar(AlertasApi.Erro erro) {
                 aLerAlertas = false;
-                if (mapaVisivel && !erroDeAlertasApresentado) {
+                if (!mapaVisivel) return;
+                falhasConsecutivasDeAlertas++;
+                if (falhasConsecutivasDeAlertas == 1) {
+                    // Repete uma vez para evitar avisar por uma falha momentânea no arranque.
+                    atualizacaoAlertas.postDelayed(MapActivity.this::carregarAlertas, 3000);
+                } else if (!erroDeAlertasApresentado) {
                     Toast.makeText(MapActivity.this, mensagemErroDeAlertas(erro), Toast.LENGTH_LONG).show();
                     erroDeAlertasApresentado = true;
                 }
@@ -1187,6 +1277,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         if (marcador != null) marcador.remove();
     }
 
+    // Coloca no mapa um pino para o perigo recebido.
     private void mostrarMarcadorDeAlerta(AlertaDTO alerta) {
         GeoPoint local = new GeoPoint(alerta.getLatitude(), alerta.getLongitude());
         Marker marcador = marcadoresDeAlertas.get(alerta.getId());
@@ -1233,6 +1324,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         return new GeoPoint(ultimaLocalizacaoGPS.getLatitude(), ultimaLocalizacaoGPS.getLongitude());
     }
 
+    // Abre o formulário para reportar um perigo.
     private void abrirCriacaoDeAlerta() {
         if (dialogoDeAlerta != null && dialogoDeAlerta.isShowing()) return;
         if (obterPosicaoParaAlerta() == null) {
@@ -1348,6 +1440,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     }
 
     /** Abre os detalhes completos quando o utilizador toca num marcador. */
+    // Mostra os detalhes quando se toca num perigo.
     private void mostrarDetalhesDoAlerta(AlertaDTO alerta) {
         CategoriaAlerta categoria = CategoriaAlerta.procurar(alerta.getCategoriaId());
         if (categoria == null) return;
