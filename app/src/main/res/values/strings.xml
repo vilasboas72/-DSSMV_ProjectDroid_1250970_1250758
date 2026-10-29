@@ -157,7 +157,7 @@
     </string-array>
     <string name="aviso_reportado">Reportado %1$s</string>
     <string name="aviso_na_rota">Na tua rota · a %1$s</string>
-    <string name="aviso_confirmar_perigo">Acabaste de passar. O perigo ainda existe?</string>
+    <string name="aviso_confirmar_perigo">O perigo ainda existe neste local?</string>
     <string name="aviso_ainda_existe">Ainda existe</string>
     <string name="aviso_ja_nao_existe">Já não existe</string>
     <string name="aviso_confirmacao_guardada">Obrigado! A tua resposta foi guardada.</string>

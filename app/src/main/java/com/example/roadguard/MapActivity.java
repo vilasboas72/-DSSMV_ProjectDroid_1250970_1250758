@@ -96,6 +96,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private int margemEsquerdaDoSistema;
     private boolean tecladoVisivel;
     private Location ultimaLocalizacaoGPS;
+    private Location localizacaoGPSAnterior;
     private TomTomApi apiTomTom;
     private TomTomApi.Local destinoSelecionado;
     private TomTomApi.Rota rotaPlaneada;
@@ -1062,26 +1063,38 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         quantidadeCirculosDesenhados = 0;
     }
 
-    // Durante a viagem: avisa até 500 m antes e pede confirmação até 150 m depois.
+    // Avisa até 500 m antes; pede confirmação ao chegar ao ponto ou ao cruzá-lo entre leituras.
     private void verificarAvisosDeAlertas() {
         if (painelAvisos == null || !mapaVisivel) return;
         List<PainelAvisos.Aviso> avisos = new ArrayList<>();
         if (viagemIniciada && obterPosicaoParaAlerta() != null) {
+            Double latitudeAnterior = null;
+            Double longitudeAnterior = null;
+            if (localizacaoGPSAnterior != null) {
+                long intervalo = ultimaLocalizacaoGPS.getElapsedRealtimeNanos()
+                        - localizacaoGPSAnterior.getElapsedRealtimeNanos();
+                // Não interpreta duas leituras muito afastadas no tempo como uma passagem.
+                if (intervalo > 0 && intervalo <= 5_000_000_000L) {
+                    latitudeAnterior = localizacaoGPSAnterior.getLatitude();
+                    longitudeAnterior = localizacaoGPSAnterior.getLongitude();
+                }
+            }
             for (AlertaDTO alerta : alertasRecebidos.values()) {
                 if (!marcadoresDeAlertas.containsKey(alerta.getId())) continue;
                 double distancia = VerificadorDeAlertas.distanciaAteAlerta(pontosDaViagem,
                         posicaoAtual.getLatitude(), posicaoAtual.getLongitude(),
                         alerta.getLatitude(), alerta.getLongitude());
-                boolean pedirConfirmacao = false;
-                if (distancia < 0) {
-                    pedirConfirmacao = painelAvisos.foiAvisado(alerta.getId())
-                            && !utilizadorLogado.equals(alerta.getUtilizadorId())
-                            && !alerta.jaConfirmou(utilizadorLogado)
-                            && VerificadorDeAlertas.acabouDePassar(pontosDaViagem,
+                boolean pedirConfirmacao = !utilizadorLogado.equals(alerta.getUtilizadorId())
+                        && !alerta.jaConfirmou(utilizadorLogado)
+                        && (painelAvisos.estaAConfirmar(alerta.getId())
+                        || painelAvisos.foiAvisado(alerta.getId())
+                            && VerificadorDeAlertas.estaAPassarPeloAlerta(pontosDaViagem,
                             posicaoAtual.getLatitude(), posicaoAtual.getLongitude(),
-                            alerta.getLatitude(), alerta.getLongitude());
-                    if (!pedirConfirmacao) continue;
+                            alerta.getLatitude(), alerta.getLongitude(), latitudeAnterior, longitudeAnterior));
+                if (pedirConfirmacao) {
                     distancia = 0; // A confirmação tem prioridade sobre os perigos à frente.
+                } else if (distancia < 0) {
+                    continue;
                 }
 
                 // Coloca o aviso antes dos que estão mais longe. É um ciclo normal de ordenação.
@@ -1316,16 +1329,18 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 }
             });
         });
-        mostrarPainelInferior(dialogo);
+        mostrarPainelInferior(dialogo, formulario);
     }
 
     /** Mostra os painéis de reporte e de detalhes com a mesma apresentação. */
-    private void mostrarPainelInferior(BottomSheetDialog painel) {
+    private void mostrarPainelInferior(BottomSheetDialog painel, View conteudo) {
         painel.setOnShowListener(ignorado -> {
             painel.getBehavior().setSkipCollapsed(true);
             painel.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
-            View folha = painel.findViewById(com.google.android.material.R.id.design_bottom_sheet);
-            if (folha != null) folha.setBackgroundColor(Color.TRANSPARENT);
+            // O conteúdo fica dentro da folha criada pelo BottomSheetDialog.
+            if (conteudo.getParent() instanceof View) {
+                ((View) conteudo.getParent()).setBackgroundColor(Color.TRANSPARENT);
+            }
         });
         painel.show();
     }
@@ -1376,7 +1391,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         painel.setOnDismissListener(dialogo -> {
             if (painelDetalheAlerta == painel) painelDetalheAlerta = null;
         });
-        mostrarPainelInferior(painel);
+        mostrarPainelInferior(painel, detalhes);
         apiAlertas.obterNomeDoAutor(alerta.getUtilizadorId(), new AlertasApi.Resposta<>() {
             @Override public void aoConcluir(String nome) {
                 if (!painel.isShowing() || isFinishing() || isDestroyed()) return;
@@ -1490,6 +1505,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private void mostrarLocalizacaoDoUtilizador(@NonNull Location location) {
         if (mapaTomTom == null) return;
 
+        localizacaoGPSAnterior = ultimaLocalizacaoGPS;
         ultimaLocalizacaoGPS = new Location(location);
         posicaoAtual = new GeoPoint(location.getLatitude(), location.getLongitude());
         if (!mapaCentradoNoUtilizador) {

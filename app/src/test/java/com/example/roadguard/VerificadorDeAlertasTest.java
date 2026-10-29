@@ -19,14 +19,31 @@ public class VerificadorDeAlertasTest {
         assertEquals(-1, VerificadorDeAlertas.distanciaAteAlerta(
                 reta(), 0, 100 * METRO, 0, 700 * METRO), 0);
     }
-    @Test public void pedeConfirmacaoApenasDepoisDePassarEProximoNaRota() {
-        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 0, 900 * METRO, 0, 1000 * METRO));
-        assertTrue(VerificadorDeAlertas.acabouDePassar(reta(), 0, 1050 * METRO, 0, 1000 * METRO));
-        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 0, 1200 * METRO, 0, 1000 * METRO));
-        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 100 * METRO, 1050 * METRO,
-                0, 1000 * METRO));
-        assertFalse(VerificadorDeAlertas.acabouDePassar(reta(), 0, 1050 * METRO,
-                80 * METRO, 1000 * METRO));
+    @Test public void pedeConfirmacaoNoPontoComPequenaToleranciaGps() {
+        assertTrue(passagem(1000, null));
+        assertTrue(passagem(990, null));
+        assertTrue(passagem(1010, null));
+        assertFalse(passagem(900, null));
+        assertFalse(passagem(1050, null));
+        assertFalse(passagem(1150, null));
+    }
+    @Test public void detetaQuandoDuasLeiturasSaltamPorCimaDoPonto() {
+        assertTrue(passagem(1040, 960.0));
+        assertFalse(passagem(1040, 1020.0)); // As duas leituras já eram depois.
+        assertFalse(passagem(1040, 500.0)); // Um salto grande não comprova a passagem.
+    }
+    @Test public void naoPedeConfirmacaoForaDaRotaOuNumaRuaAoLado() {
+        assertFalse(VerificadorDeAlertas.estaAPassarPeloAlerta(reta(), 100 * METRO,
+                1000 * METRO, 0, 1000 * METRO, null, null));
+        assertFalse(VerificadorDeAlertas.estaAPassarPeloAlerta(reta(), 0,
+                1000 * METRO, 80 * METRO, 1000 * METRO, null, null));
+        assertFalse(VerificadorDeAlertas.estaAPassarPeloAlerta(Collections.emptyList(),
+                0, 0, 0, 0, null, null));
+    }
+    private boolean passagem(double posicao, Double anterior) {
+        return VerificadorDeAlertas.estaAPassarPeloAlerta(reta(), 0, posicao * METRO,
+                0, 1000 * METRO, anterior == null ? null : 0.0,
+                anterior == null ? null : anterior * METRO);
     }
     @Test public void naoAvisaPerigoJaUltrapassado() {
         assertEquals(-1, VerificadorDeAlertas.distanciaAteAlerta(

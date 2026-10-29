@@ -152,7 +152,7 @@ final class PainelAvisos {
         });
     }
 
-    private boolean estaAConfirmar(String id) {
+    boolean estaAConfirmar(String id) {
         return atual != null && atual.pedirConfirmacao && atual.alerta.getId().equals(id);
     }
 

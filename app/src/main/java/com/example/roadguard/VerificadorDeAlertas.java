@@ -8,6 +8,7 @@ final class VerificadorDeAlertas {
     private static final double RAIO_TERRA = 6371000;
     private static final double TOLERANCIA_GPS = 75;
     private static final double TOLERANCIA_ALERTA = 40;
+    private static final double TOLERANCIA_PASSAGEM = 20;
 
     static final double RAIO_VISIBILIDADE = 2000;
 
@@ -73,16 +74,25 @@ final class VerificadorDeAlertas {
         return distancia;
     }
 
-    // A pergunta só pode aparecer nos primeiros 150 m depois do perigo, na mesma rota.
-    static boolean acabouDePassar(List<double[]> rota, double latitude, double longitude,
-                                  double latitudeAlerta, double longitudeAlerta) {
+    // Pede junto ao ponto, com 20 m de tolerância para a imprecisão do GPS.
+    static boolean estaAPassarPeloAlerta(List<double[]> rota, double latitude, double longitude,
+                                        double latitudeAlerta, double longitudeAlerta,
+                                        Double latitudeAnterior, Double longitudeAnterior) {
         if (rota.size() < 2) return false;
         PosicaoNaRota utilizador = projetarNaRota(rota, latitude, longitude);
         PosicaoNaRota alerta = projetarNaRota(rota, latitudeAlerta, longitudeAlerta);
-        double distanciaDepois = utilizador.metrosDesdeInicio - alerta.metrosDesdeInicio;
-        return utilizador.distanciaLateral <= TOLERANCIA_GPS
-                && alerta.distanciaLateral <= TOLERANCIA_ALERTA
-                && distanciaDepois > 0 && distanciaDepois <= 150;
+        if (utilizador.distanciaLateral > TOLERANCIA_GPS
+                || alerta.distanciaLateral > TOLERANCIA_ALERTA) return false;
+        double distancia = alerta.metrosDesdeInicio - utilizador.metrosDesdeInicio;
+        if (Math.abs(distancia) <= TOLERANCIA_PASSAGEM) return true;
+
+        // Uma leitura pode chegar antes e a seguinte depois, sem medir exatamente o ponto.
+        if (latitudeAnterior == null || longitudeAnterior == null) return false;
+        PosicaoNaRota anterior = projetarNaRota(rota, latitudeAnterior, longitudeAnterior);
+        double avancou = utilizador.metrosDesdeInicio - anterior.metrosDesdeInicio;
+        return anterior.distanciaLateral <= TOLERANCIA_GPS
+                && anterior.metrosDesdeInicio < alerta.metrosDesdeInicio
+                && distancia < 0 && avancou > 0 && avancou <= 100;
     }
 
     // Procura o segmento da estrada mais próximo da coordenada.
