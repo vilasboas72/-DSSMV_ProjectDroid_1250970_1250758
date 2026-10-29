@@ -61,9 +61,11 @@
     <string name="route_preview">Rota de carro</string>
     <string name="route_maneuver_format">Daqui a %1$s, %2$s</string>
     <string name="route_remaining_format">Faltam %1$s · cerca de %2$s min</string>
+    <string name="route_summary_format" formatted="true">%1$s · cerca de %2$d min</string>
     <string name="route_arrival">Chegaste ao destino</string>
     <string name="route_keep_following">Continua pela rota até ao destino.</string>
-    <string name="route_summary_format">%1$s · cerca de %2$s min</string>
+    <string name="route_recalculating">A procurar um novo percurso…</string>
+    <string name="route_recalculate_failed">Não foi possível atualizar o percurso. Continua pela rota indicada.</string>
     <string name="dismiss_route">Cancelar rota</string>
     <string name="close_symbol">×</string>
     <string name="navigation_next">PRÓXIMA INDICAÇÃO</string>
