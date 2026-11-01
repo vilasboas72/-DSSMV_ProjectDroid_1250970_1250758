@@ -134,9 +134,17 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         try {
             ApplicationInfo informacoes = getPackageManager().getApplicationInfo(
                     getPackageName(), PackageManager.GET_META_DATA);
-            String chave = informacoes.metaData == null ? null
-                    : informacoes.metaData.getString("com.tomtom.sdk.api.key");
-            return chave == null || chave.trim().isEmpty() ? null : new TomTomApi(chave);
+            String chave;
+            if (informacoes.metaData == null) {
+                chave = null;
+            } else {
+                chave = informacoes.metaData.getString("com.tomtom.sdk.api.key");
+            }
+            if (chave == null || chave.trim().isEmpty()) {
+                return null;
+            } else {
+                return new TomTomApi(chave);
+            }
         } catch (PackageManager.NameNotFoundException erro) {
             return null;
         }
@@ -154,8 +162,16 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
                 boolean vazia = zonas.isEmpty();
                 if (vazia) mensagemLista.setText(R.string.zones_empty);
                 else mensagemLista.setText("");
-                mensagemLista.setVisibility(vazia ? View.VISIBLE : View.GONE);
-                listaZonas.setVisibility(vazia ? View.GONE : View.VISIBLE);
+                if (vazia) {
+                    mensagemLista.setVisibility(View.VISIBLE);
+                } else {
+                    mensagemLista.setVisibility(View.GONE);
+                }
+                if (vazia) {
+                    listaZonas.setVisibility(View.GONE);
+                } else {
+                    listaZonas.setVisibility(View.VISIBLE);
+                }
                 atualizarLista();
             }
 
@@ -169,7 +185,11 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
 
     // Ativa as caixas para eliminar zonas ou mostrá-las juntas no mapa.
     private void iniciarSelecao(int modo) {
-        modoSelecao = modoSelecao == modo ? SEM_SELECAO : modo;
+        if (modoSelecao == modo) {
+            modoSelecao = SEM_SELECAO;
+        } else {
+            modoSelecao = modo;
+        }
         listaZonas.clearChoices();
         atualizarLista();
     }
@@ -177,18 +197,32 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
     // Troca as linhas da lista por linhas com caixas de seleção.
     private void atualizarLista() {
         boolean selecionar = modoSelecao != SEM_SELECAO && !zonasGuardadas.isEmpty();
-        int tipoLinha = selecionar ? android.R.layout.simple_list_item_multiple_choice
-                : android.R.layout.simple_list_item_1;
+        int tipoLinha;
+        if (selecionar) {
+            tipoLinha = android.R.layout.simple_list_item_multiple_choice;
+        } else {
+            tipoLinha = android.R.layout.simple_list_item_1;
+        }
         ArrayAdapter<String> adaptador = new ArrayAdapter<>(this, tipoLinha);
         for (ZonaFavorita zona : zonasGuardadas) {
             adaptador.add(getString(R.string.zone_list_item, zona.nome, zona.raioKm, zona.local));
         }
-        listaZonas.setChoiceMode(selecionar
-                ? ListView.CHOICE_MODE_MULTIPLE : ListView.CHOICE_MODE_NONE);
+        if (selecionar) {
+            listaZonas.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+        } else {
+            listaZonas.setChoiceMode(ListView.CHOICE_MODE_NONE);
+        }
         listaZonas.setAdapter(adaptador);
-        acoesSelecao.setVisibility(selecionar ? View.VISIBLE : View.GONE);
-        botaoConfirmarSelecao.setText(modoSelecao == SELECIONAR_PARA_ELIMINAR
-                ? R.string.zones_delete_selected : R.string.zones_show_selected);
+        if (selecionar) {
+            acoesSelecao.setVisibility(View.VISIBLE);
+        } else {
+            acoesSelecao.setVisibility(View.GONE);
+        }
+        if (modoSelecao == SELECIONAR_PARA_ELIMINAR) {
+            botaoConfirmarSelecao.setText(R.string.zones_delete_selected);
+        } else {
+            botaoConfirmarSelecao.setText(R.string.zones_show_selected);
+        }
     }
 
     // Marca todas as zonas; se já estiverem marcadas, limpa a seleção.
@@ -374,7 +408,11 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
                     adaptador.add(linha);
                 }
                 adaptador.notifyDataSetChanged();
-                sugestoes.setVisibility(resultados.isEmpty() ? View.GONE : View.VISIBLE);
+                if (resultados.isEmpty()) {
+                    sugestoes.setVisibility(View.GONE);
+                } else {
+                    sugestoes.setVisibility(View.VISIBLE);
+                }
                 if (resultados.isEmpty()) {
                     Toast.makeText(ZonasFavoritasActivity.this,
                             R.string.search_not_found, Toast.LENGTH_SHORT).show();
@@ -422,8 +460,12 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
         int indiceRaio = Math.max(0, Math.min(
                 RAIOS_DISPONIVEIS.length - 1, raio.getSelectedItemPosition()));
         int raioKm = RAIOS_DISPONIVEIS[indiceRaio];
-        String morada = local.endereco == null || local.endereco.isEmpty()
-                ? local.nome : local.endereco;
+        String morada;
+        if (local.endereco == null || local.endereco.isEmpty()) {
+            morada = local.nome;
+        } else {
+            morada = local.endereco;
+        }
         ZonaFavorita zona = new ZonaFavorita("", utilizadorId, nomeZona, morada,
                 local.latitude, local.longitude, raioKm);
         guardar.setEnabled(false);

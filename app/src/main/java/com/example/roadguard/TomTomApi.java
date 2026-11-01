@@ -83,9 +83,19 @@ final class TomTomApi {
                         if (ponto == null) continue;
 
                         JSONObject morada = item.optJSONObject("address");
-                        String endereco = morada == null ? "" : morada.optString("freeformAddress", "");
+                        String endereco;
+                        if (morada == null) {
+                            endereco = "";
+                        } else {
+                            endereco = morada.optString("freeformAddress", "");
+                        }
                         JSONObject pontoInteresse = item.optJSONObject("poi");
-                        String nome = pontoInteresse == null ? endereco : pontoInteresse.optString("name", endereco);
+                        String nome;
+                        if (pontoInteresse == null) {
+                            nome = endereco;
+                        } else {
+                            nome = pontoInteresse.optString("name", endereco);
+                        }
                         if (nome.isEmpty()) nome = endereco;
                         locais.add(new Local(nome, endereco,
                                 ponto.optDouble("lat"), ponto.optDouble("lon")));
@@ -137,7 +147,12 @@ final class TomTomApi {
                 }
 
                 JSONObject orientacoes = rotaJson.optJSONObject("guidance");
-                JSONArray listaOrientacoes = orientacoes == null ? null : orientacoes.optJSONArray("instructions");
+                JSONArray listaOrientacoes;
+                if (orientacoes == null) {
+                    listaOrientacoes = null;
+                } else {
+                    listaOrientacoes = orientacoes.optJSONArray("instructions");
+                }
                 if (listaOrientacoes != null) {
                     for (int i = 0; i < listaOrientacoes.length(); i++) {
                         JSONObject item = listaOrientacoes.getJSONObject(i);

@@ -93,7 +93,12 @@ final class PainelAvisos {
         if (!ativo || atual != null || atividade.isFinishing() || atividade.isDestroyed()) return;
         for (Aviso aviso : disponiveis) {
             String id = aviso.alerta.getId();
-            List<String> mostrados = aviso.pedirConfirmacao ? confirmacoesJaPedidas : idsJaMostrados;
+            List<String> mostrados;
+            if (aviso.pedirConfirmacao) {
+                mostrados = confirmacoesJaPedidas;
+            } else {
+                mostrados = idsJaMostrados;
+            }
             if (mostrados.contains(id)) continue;
             mostrados.add(id);
             atual = aviso;
@@ -114,11 +119,16 @@ final class PainelAvisos {
         ((ImageView) painel.findViewById(R.id.aviso_icone)).setImageResource(categoria.icone);
         ((TextView) painel.findViewById(R.id.aviso_titulo)).setText(categoria.nome);
         String distancia = Math.round(atual.distancia / 10.0) * 10 + " m";
-        ((TextView) painel.findViewById(R.id.aviso_contexto)).setText(
-                atual.pedirConfirmacao ? atividade.getString(R.string.aviso_confirmar_perigo)
-                        : atividade.getString(R.string.aviso_na_rota, distancia));
-        painel.findViewById(R.id.aviso_confirmacoes).setVisibility(
-                atual.pedirConfirmacao ? View.VISIBLE : View.GONE);
+        if (atual.pedirConfirmacao) {
+            ((TextView) painel.findViewById(R.id.aviso_contexto)).setText(atividade.getString(R.string.aviso_confirmar_perigo));
+        } else {
+            ((TextView) painel.findViewById(R.id.aviso_contexto)).setText(atividade.getString(R.string.aviso_na_rota, distancia));
+        }
+        if (atual.pedirConfirmacao) {
+            painel.findViewById(R.id.aviso_confirmacoes).setVisibility(View.VISIBLE);
+        } else {
+            painel.findViewById(R.id.aviso_confirmacoes).setVisibility(View.GONE);
+        }
         painel.findViewById(R.id.aviso_ainda_existe).setEnabled(!aEnviar);
         painel.findViewById(R.id.aviso_ja_nao_existe).setEnabled(!aEnviar);
         ((TextView) painel.findViewById(R.id.aviso_data)).setText(
@@ -135,8 +145,13 @@ final class PainelAvisos {
         relogio.removeCallbacks(fecharAviso);
         confirmar.enviar(enviado.alerta, aindaExiste, new AlertasApi.Resposta<Boolean>() {
             @Override public void aoConcluir(Boolean guardado) {
-                android.widget.Toast.makeText(atividade, guardado
-                        ? R.string.aviso_confirmacao_guardada : R.string.aviso_confirmacao_indisponivel,
+                int mensagem;
+                if (guardado) {
+                    mensagem = R.string.aviso_confirmacao_guardada;
+                } else {
+                    mensagem = R.string.aviso_confirmacao_indisponivel;
+                }
+                android.widget.Toast.makeText(atividade, mensagem,
                         android.widget.Toast.LENGTH_SHORT).show();
                 if (estaAConfirmar(enviado.alerta.getId())) fecharAtual();
             }
