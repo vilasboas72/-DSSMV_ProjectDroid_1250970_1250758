@@ -1,0 +1,197 @@
+package com.example.roadguard.API;
+
+import com.example.roadguard.Service.VerificadorDeAlertas;
+
+import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.tomtom.sdk.location.GeoPoint;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+/** Faz as pesquisas de locais e pede rotas à API HTTP da TomTom. */
+public final class TomTomApi {
+    public interface Resposta<T> {
+        void aoConcluir(T resultado);
+        void aoFalhar();
+    }
+
+    public static final class Local {
+        public final String nome;
+        public final String endereco;
+        public final double latitude;
+        public final double longitude;
+
+        public Local(String nome, String endereco, double latitude, double longitude) {
+            this.nome = nome;
+            this.endereco = endereco;
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+
+    public static final class Rota {
+        public final List<GeoPoint> pontos = new ArrayList<>();
+        public final List<Instrucao> instrucoes = new ArrayList<>();
+        public final List<Double> distanciaDeCadaPonto = new ArrayList<>();
+        public int distanciaMetros;
+        public int duracaoSegundos;
+    }
+
+    public static final class Instrucao {
+        public final String mensagem;
+        public final int distanciaDesdeInicio;
+
+        public Instrucao(String mensagem, int distanciaDesdeInicio) {
+            this.mensagem = mensagem;
+            this.distanciaDesdeInicio = distanciaDesdeInicio;
+        }
+    }
+
+    private final String chaveApi;
+    private final ExecutorService tarefasDeRede = Executors.newSingleThreadExecutor();
+    private final Handler gestorPrincipal = new Handler(Looper.getMainLooper());
+
+    public TomTomApi(String chaveApi) {
+        this.chaveApi = chaveApi;
+    }
+
+    // Procura sugestões, dando prioridade à posição atual quando já está disponível.
+    public void pesquisarLocais(String texto, GeoPoint posicao, Resposta<List<Local>> respostaPedido) {
+        tarefasDeRede.execute(() -> {
+            try {
+                String url = "https://api.tomtom.com/search/2/search/" + Uri.encode(texto)
+                        + ".json?key=" + Uri.encode(chaveApi)
+                        + "&typeahead=true&limit=6&language=pt-PT";
+                // Sem countrySet=PT, a API também pode devolver locais nos EUA ou noutros países.
+                if (posicao != null) {
+                    url += "&geobias=point:" + posicao.getLatitude() + "," + posicao.getLongitude();
+                }
+                JSONObject resposta = pedirJson(url);
+                JSONArray resultados = resposta.optJSONArray("results");
+                List<Local> locais = new ArrayList<>();
+                if (resultados != null) {
+                    for (int i = 0; i < resultados.length(); i++) {
+                        JSONObject item = resultados.getJSONObject(i);
+                        JSONObject ponto = item.optJSONObject("position");
+                        if (ponto == null) continue;
+
+                        JSONObject morada = item.optJSONObject("address");
+                        String endereco;
+                        if (morada == null) {
+                            endereco = "";
+                        } else {
+                            endereco = morada.optString("freeformAddress", "");
+                        }
+                        JSONObject pontoInteresse = item.optJSONObject("poi");
+                        String nome;
+                        if (pontoInteresse == null) {
+                            nome = endereco;
+                        } else {
+                            nome = pontoInteresse.optString("name", endereco);
+                        }
+                        if (nome.isEmpty()) nome = endereco;
+                        locais.add(new Local(nome, endereco,
+                                ponto.optDouble("lat"), ponto.optDouble("lon")));
+                    }
+                }
+                entregar(respostaPedido, locais);
+            } catch (Exception e) {
+                entregarFalha(respostaPedido);
+            }
+        });
+    }
+
+    // Calcula uma rota de carro e pede instruções em português.
+    public void calcularRota(GeoPoint origem, Local destino, Resposta<Rota> respostaPedido) {
+        tarefasDeRede.execute(() -> {
+            try {
+                String pontos = String.format(Locale.US, "%f,%f:%f,%f",
+                        origem.getLatitude(), origem.getLongitude(), destino.latitude, destino.longitude);
+                String url = "https://api.tomtom.com/routing/1/calculateRoute/" + pontos + "/json?key="
+                        + Uri.encode(chaveApi)
+                        + "&travelMode=car&routeType=fastest&traffic=true&instructionsType=text"
+                        + "&language=pt-PT&computeTravelTimeFor=all";
+                JSONObject resposta = pedirJson(url);
+                JSONArray rotas = resposta.optJSONArray("routes");
+                if (rotas == null || rotas.length() == 0) throw new IllegalStateException("Sem rota");
+
+                JSONObject rotaJson = rotas.getJSONObject(0);
+                JSONObject resumo = rotaJson.getJSONObject("summary");
+                Rota rota = new Rota();
+                rota.distanciaMetros = resumo.optInt("lengthInMeters");
+                rota.duracaoSegundos = resumo.optInt("travelTimeInSeconds");
+
+                GeoPoint pontoAnterior = null;
+                double distanciaAcumulada = 0.0;
+                JSONArray trechos = rotaJson.optJSONArray("legs");
+                if (trechos != null) {
+                    for (int i = 0; i < trechos.length(); i++) {
+                        JSONArray pontosDoTrecho = trechos.getJSONObject(i).optJSONArray("points");
+                        if (pontosDoTrecho == null) continue;
+                        for (int j = 0; j < pontosDoTrecho.length(); j++) {
+                            JSONObject ponto = pontosDoTrecho.getJSONObject(j);
+                            GeoPoint pontoAtual = new GeoPoint(ponto.getDouble("latitude"), ponto.getDouble("longitude"));
+                            if (pontoAnterior != null) distanciaAcumulada += medirDistancia(pontoAnterior, pontoAtual);
+                            rota.pontos.add(pontoAtual);
+                            rota.distanciaDeCadaPonto.add(distanciaAcumulada);
+                            pontoAnterior = pontoAtual;
+                        }
+                    }
+                }
+
+                JSONObject orientacoes = rotaJson.optJSONObject("guidance");
+                JSONArray listaOrientacoes;
+                if (orientacoes == null) {
+                    listaOrientacoes = null;
+                } else {
+                    listaOrientacoes = orientacoes.optJSONArray("instructions");
+                }
+                if (listaOrientacoes != null) {
+                    for (int i = 0; i < listaOrientacoes.length(); i++) {
+                        JSONObject item = listaOrientacoes.getJSONObject(i);
+                        String mensagem = item.optString("message", "");
+                        if (!mensagem.isEmpty()) {
+                            rota.instrucoes.add(new Instrucao(mensagem, item.optInt("routeOffsetInMeters")));
+                        }
+                    }
+                }
+                entregar(respostaPedido, rota);
+            } catch (Exception e) {
+                entregarFalha(respostaPedido);
+            }
+        });
+    }
+
+    private double medirDistancia(GeoPoint pontoA, GeoPoint pontoB) {
+        return VerificadorDeAlertas.medirDistancia(pontoA.getLatitude(), pontoA.getLongitude(),
+                pontoB.getLatitude(), pontoB.getLongitude());
+    }
+
+    public void fechar() {
+        tarefasDeRede.shutdownNow();
+    }
+
+    private JSONObject pedirJson(String endereco) throws Exception {
+        com.google.gson.JsonObject resposta = ClienteRetrofit.executar(
+                ClienteRetrofit.tomTom.obter(endereco));
+        if (resposta == null) throw new IllegalStateException("Resposta vazia da TomTom");
+        return new JSONObject(resposta.toString());
+    }
+
+    private <T> void entregar(Resposta<T> respostaPedido, T resultado) {
+        gestorPrincipal.post(() -> respostaPedido.aoConcluir(resultado));
+    }
+
+    private void entregarFalha(Resposta<?> respostaPedido) {
+        gestorPrincipal.post(respostaPedido::aoFalhar);
+    }
+}
