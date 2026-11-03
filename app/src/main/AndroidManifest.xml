@@ -18,7 +18,7 @@
                 android:value="Vo66PY0oYkBLNbhpxIVrvPHykratDpuj" />
 
         <activity
-                android:name=".MainActivity"
+                android:name=".UI.MainActivity"
                 android:theme="@style/Theme.RoadGuard.Login"
                 android:windowSoftInputMode="adjustResize"
                 android:exported="true">
@@ -29,18 +29,18 @@
         </activity>
 
         <activity
-                android:name=".MapActivity"
+                android:name=".UI.MapActivity"
                 android:theme="@style/Theme.MaterialComponents.Light.NoActionBar"
                 android:exported="true" />
 
         <activity
-                android:name=".RegistoActivity"
+                android:name=".UI.RegistoActivity"
                 android:theme="@style/Theme.RoadGuard.Login"
                 android:windowSoftInputMode="adjustResize"
                 android:exported="false"/>
 
         <activity
-                android:name=".ZonasFavoritasActivity"
+                android:name=".UI.ZonasFavoritasActivity"
                 android:theme="@style/Theme.MaterialComponents.Light.NoActionBar"
                 android:exported="false" />
     </application>
