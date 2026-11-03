@@ -66,6 +66,8 @@
     <string name="route_keep_following">Continua pela rota até ao destino.</string>
     <string name="route_recalculating">A procurar um novo percurso…</string>
     <string name="route_recalculate_failed">Não foi possível atualizar o percurso. Continua pela rota indicada.</string>
+    <string name="route_avoiding_severe_alerts">Perigo grave na rota. A procurar um desvio…</string>
+    <string name="route_alert_reroute_failed">Não foi possível encontrar um desvio seguro. Mantém atenção ao perigo.</string>
     <string name="dismiss_route">Cancelar rota</string>
     <string name="close_symbol">×</string>
     <string name="navigation_next">PRÓXIMA INDICAÇÃO</string>

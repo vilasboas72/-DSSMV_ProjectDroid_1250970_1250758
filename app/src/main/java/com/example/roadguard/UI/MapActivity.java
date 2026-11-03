@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Locale;
 import android.content.Intent;
 import android.app.AlertDialog;
@@ -123,6 +125,8 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     private boolean seguirLocalNaViagem = true;
     private boolean aRecalcularRota;
     private long ultimaRequisicaoDeRota;
+    // Evita repetir o pedido para o mesmo alerta grave durante a viagem.
+    private final Set<String> alertasGravesConsiderados = new HashSet<>();
     private boolean aEscolherDestino;
     private AlertasApi apiAlertas;
     private String utilizadorLogado;
@@ -734,6 +738,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         seguirLocalNaViagem = true;
         aRecalcularRota = false;
         ultimaRequisicaoDeRota = 0;
+        alertasGravesConsiderados.clear();
         gestorViagem.reiniciar();
         pontosDaViagem.clear();
         for (GeoPoint ponto : rotaPlaneada.pontos) {
@@ -795,18 +800,26 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
 
     // Pede à TomTom um novo percurso desde a posição GPS atual até ao mesmo destino.
     private void recalcularRota(Location localizacao) {
+        recalcularRota(localizacao, new ArrayList<>(), false);
+    }
+
+    // Recalcula desde o GPS atual; se houver perigos graves, pede uma rota com desvios.
+    private boolean recalcularRota(Location localizacao, List<AlertaDTO> alertasEvitados, boolean porAlertaGrave) {
         long agora = SystemClock.elapsedRealtime();
-        if (!viagemIniciada || destinoSelecionado == null || aRecalcularRota
-                || agora - ultimaRequisicaoDeRota < 15000) return;
+        if (!viagemIniciada || destinoSelecionado == null || aRecalcularRota || (!porAlertaGrave && agora - ultimaRequisicaoDeRota < 15000)) return false;
 
         aRecalcularRota = true;
         ultimaRequisicaoDeRota = agora;
         gestorViagem.limparAfastamento();
         TomTomApi.Local destino = destinoSelecionado;
-        interfaceMapa.navigationInstruction.setText(R.string.route_recalculating);
+        if (porAlertaGrave) {
+            interfaceMapa.navigationInstruction.setText(R.string.route_avoiding_severe_alerts);
+        } else {
+            interfaceMapa.navigationInstruction.setText(R.string.route_recalculating);
+        }
 
         GeoPoint origem = new GeoPoint(localizacao.getLatitude(), localizacao.getLongitude());
-        apiTomTom.calcularRota(origem, destino, new TomTomApi.Resposta<>() {
+        TomTomApi.Resposta<TomTomApi.Rota> resposta = new TomTomApi.Resposta<>() {
             @Override
             public void aoConcluir(TomTomApi.Rota novaRota) {
                 aRecalcularRota = false;
@@ -816,21 +829,84 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                     return;
                 }
                 rotaPlaneada = novaRota;
+                atualizarPontosDaViagem(novaRota);
+                alertasGravesConsiderados.clear();
                 gestorViagem.reiniciar();
                 desenharLinhaDaRota();
-                atualizarOrientacaoDaViagem(localizacao);
+                Location posicaoMaisRecente = ultimaLocalizacaoGPS == null
+                        ? localizacao : ultimaLocalizacaoGPS;
+                atualizarOrientacaoDaViagem(posicaoMaisRecente);
+                verificarDesvioPorAlertaGrave();
             }
 
             @Override
             public void aoFalhar() {
                 aRecalcularRota = false;
-                if (viagemIniciada && destinoSelecionado == destino) {
+                if (!viagemIniciada || destinoSelecionado != destino) return;
+                if (porAlertaGrave) {
+                    interfaceMapa.navigationInstruction.setText(R.string.route_alert_reroute_failed);
+                } else {
                     interfaceMapa.navigationInstruction.setText(R.string.route_recalculate_failed);
                 }
             }
-        });
+        };
+
+        if (alertasEvitados.isEmpty()) {
+            apiTomTom.calcularRota(origem, destino, resposta);
+        } else {
+            apiTomTom.calcularRotaEvitandoAlertas(
+                    origem, destino, pontosDaViagem, alertasEvitados, resposta);
+        }
+        return true;
     }
 
+    // Guarda a rota atual também no formato usado para verificar perigos no caminho.
+    private void atualizarPontosDaViagem(TomTomApi.Rota rota) {
+        pontosDaViagem.clear();
+        for (GeoPoint ponto : rota.pontos) {
+            pontosDaViagem.add(new double[]{ponto.getLatitude(), ponto.getLongitude()});
+        }
+    }
+
+    // Procura perigos graves à frente e pede um único recálculo para os contornar.
+    private void verificarDesvioPorAlertaGrave() {
+        if (!viagemIniciada || aRecalcularRota || ultimaLocalizacaoGPS == null
+                || pontosDaViagem.size() < 2) return;
+
+        List<AlertaDTO> novosAlertasGraves = new ArrayList<>();
+        for (AlertaDTO alerta : alertasRecebidos.values()) {
+            if (!"elevada".equals(alerta.getGravidade())
+                    || alertasGravesConsiderados.contains(alerta.getId())) continue;
+            double distancia = VerificadorDeAlertas.distanciaAteAlertaMaisAdiante(
+                    pontosDaViagem, ultimaLocalizacaoGPS.getLatitude(),
+                    ultimaLocalizacaoGPS.getLongitude(), alerta.getLatitude(), alerta.getLongitude());
+            if (distancia >= 0) novosAlertasGraves.add(alerta);
+        }
+        if (novosAlertasGraves.isEmpty()) return;
+
+        // Inclui todos os perigos graves ativos que estão à frente na rota atual.
+        List<AlertaDTO> alertasEvitados = new ArrayList<>();
+        for (AlertaDTO alerta : alertasRecebidos.values()) {
+            if (!"elevada".equals(alerta.getGravidade())) continue;
+            double distancia = VerificadorDeAlertas.distanciaAteAlertaMaisAdiante(
+                    pontosDaViagem, ultimaLocalizacaoGPS.getLatitude(),
+                    ultimaLocalizacaoGPS.getLongitude(), alerta.getLatitude(), alerta.getLongitude());
+            if (distancia >= 0) alertasEvitados.add(alerta);
+        }
+
+        alertasEvitados.sort((primeiro, segundo) -> Double.compare(
+                VerificadorDeAlertas.distanciaAteAlertaMaisAdiante(pontosDaViagem,
+                        ultimaLocalizacaoGPS.getLatitude(), ultimaLocalizacaoGPS.getLongitude(),
+                        primeiro.getLatitude(), primeiro.getLongitude()),
+                VerificadorDeAlertas.distanciaAteAlertaMaisAdiante(pontosDaViagem,
+                        ultimaLocalizacaoGPS.getLatitude(), ultimaLocalizacaoGPS.getLongitude(),
+                        segundo.getLatitude(), segundo.getLongitude())));
+        if (recalcularRota(ultimaLocalizacaoGPS, alertasEvitados, true)) {
+            for (AlertaDTO alerta : novosAlertasGraves) {
+                alertasGravesConsiderados.add(alerta.getId());
+            }
+        }
+    }
     // Prepara o texto da distância em metros ou quilómetros.
     private String formatarDistancia(double metros) {
         if (metros >= 1000) {
@@ -843,6 +919,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
     // Termina a navegação e limpa os dados da viagem.
     private void terminarViagem() {
         viagemIniciada = false;
+        alertasGravesConsiderados.clear();
         aRecalcularRota = false;
         gestorViagem.limparAfastamento();
         seguirLocalNaViagem = false;
@@ -1223,6 +1300,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 if (!mapaVisivel || isFinishing() || isDestroyed()) return;
                 alertasRecebidos.clear();
                 for (AlertaDTO alerta : alertas) alertasRecebidos.put(alerta.getId(), alerta);
+                alertasGravesConsiderados.retainAll(alertasRecebidos.keySet());
                 atualizarAlertasNoMapa();
             }
             @Override public void aoFalhar(AlertasApi.Erro erro) {
@@ -1263,6 +1341,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 mostrarMarcadorDeAlerta(alerta);
             }
         }
+        verificarDesvioPorAlertaGrave();
         verificarAvisosDeAlertas();
     }
 

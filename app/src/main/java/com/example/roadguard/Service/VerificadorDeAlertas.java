@@ -77,6 +77,27 @@ public final class VerificadorDeAlertas {
         return distancia;
     }
 
+    // este metodo ajuda a app a confirmar se o alerta ficou afastado dela
+    public static double distanciaAteAlertaMaisAdiante(List<double[]> rota,
+            double latitude, double longitude, double latitudeAlerta, double longitudeAlerta) {
+        if (rota.size() < 2) return -1;
+        PosicaoNaRota utilizador = projetarNaRota(rota, latitude, longitude);
+        PosicaoNaRota alerta = projetarNaRota(rota, latitudeAlerta, longitudeAlerta);
+        if (utilizador.distanciaLateral > TOLERANCIA_GPS
+                || alerta.distanciaLateral > TOLERANCIA_ALERTA) return -1;
+        double distancia = alerta.metrosDesdeInicio - utilizador.metrosDesdeInicio;
+        if (distancia > 0) {
+            return distancia;
+        } else {
+            return -1;
+        }
+    }
+    // Mede a distância lateral entre um alerta e a rota, em metros.
+    public static double distanciaLateralAteRota(List<double[]> rota, double latitude, double longitude) {
+        if (rota.size() < 2) return Double.MAX_VALUE;
+        return projetarNaRota(rota, latitude, longitude).distanciaLateral;
+    }
+
     // Pede junto ao ponto, com 20 m de tolerância para a imprecisão do GPS.
     public static boolean estaAPassarPeloAlerta(List<double[]> rota, double latitude, double longitude,
                                         double latitudeAlerta, double longitudeAlerta,
