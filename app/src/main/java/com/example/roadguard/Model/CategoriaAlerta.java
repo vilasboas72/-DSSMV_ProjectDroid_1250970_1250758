@@ -23,6 +23,12 @@ public enum CategoriaAlerta {
         this.gravidade = gravidade;
     }
 
+    public static int recursoDaGravidade(String gravidade) {
+        if ("elevada".equals(gravidade)) return R.string.alert_high;
+        if ("media".equals(gravidade)) return R.string.alert_medium;
+        return R.string.alert_low;
+    }
+
     public static CategoriaAlerta procurar(String id) {
         for (CategoriaAlerta categoria : values()) {
             if (categoria.id.equals(id)) return categoria;
