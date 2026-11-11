@@ -89,7 +89,10 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
     // Liga os botões às ações do ecrã.
     private void configurarBotoes() {
         findViewById(R.id.btn_voltar_zonas).setOnClickListener(view -> finish());
-        findViewById(R.id.btn_criar_zona).setOnClickListener(view -> abrirCriacaoDeZona());
+        findViewById(R.id.btn_criar_zona).setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Criar zona favorita
+            abrirCriacaoDeZona();
+        });
         findViewById(R.id.btn_selecionar_eliminar)
                 .setOnClickListener(view -> iniciarSelecao(SELECIONAR_PARA_ELIMINAR));
         findViewById(R.id.btn_selecionar_mapa)
@@ -446,7 +449,10 @@ public class ZonasFavoritasActivity extends AppCompatActivity {
             sugestoes.setVisibility(View.GONE);
             guardar.setEnabled(true);
         });
-        guardar.setOnClickListener(view -> guardarZona(nome, raio, guardar, dialogo));
+        guardar.setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Guardar zona favorita
+            guardarZona(nome, raio, guardar, dialogo);
+        });
         cancelar.setOnClickListener(view -> dialogo.dismiss());
         dialogo.setOnDismissListener(ignorado -> cancelarPesquisaPendente());
     }

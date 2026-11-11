@@ -62,6 +62,7 @@ public class RegistoActivity extends AppCompatActivity {
 
         // O gestor envia o POST; o ecrã apresenta o sucesso ou o erro.
         btnConfirmarRegisto.setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Confirmar registo
             String nome = editNome.getText().toString().trim();
             String email = editEmail.getText().toString().trim();
             String password = editPassword.getText().toString().trim();

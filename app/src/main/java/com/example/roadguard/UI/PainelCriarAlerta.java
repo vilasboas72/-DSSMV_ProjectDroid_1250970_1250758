@@ -38,7 +38,7 @@ final class PainelCriarAlerta {
         configurarCategorias(formulario.getContext());
         fechar.setOnClickListener(view -> fechar());
         confirmar.setOnClickListener(view -> {
-            // Entrega a escolha à MapActivity quando o utilizador toca em Guardar.
+            // AÇÃO DO UTILIZADOR — Guardar alerta
             if (categoriaEscolhida != null) aoGuardar.guardar(categoriaEscolhida, this);
         });
     }
@@ -55,6 +55,7 @@ final class PainelCriarAlerta {
             botao.setCheckable(true);
             botao.setContentDescription(descricao);
             botao.setOnClickListener(view -> {
+                // AÇÃO DO UTILIZADOR — Escolher categoria do alerta
                 categoriaEscolhida = categoria;
                 for (MaterialButton opcao : opcoes) opcao.setChecked(opcao == botao);
                 resumo.setText(descricao);

@@ -99,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         btnIrRegisto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // AÇÃO DO UTILIZADOR — Abrir o registo
                 Intent intent = new Intent(MainActivity.this, RegistoActivity.class);
                 startActivity(intent);
             }
@@ -106,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
 
         // O ecrã lê os campos; o gestor consulta e verifica a conta.
         btnLogin.setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Entrar
             String email = editEmail.getText().toString();
             String password = editPassword.getText().toString();
             if (email.isEmpty() || password.isEmpty()) {

@@ -225,7 +225,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         apiTomTom = new TomTomApi(chaveApi);
         configurarPesquisaERota();
         // Ao tocar no botão, abre a criação de um alerta.
-        interfaceMapa.btnReportAlert.setOnClickListener(view -> abrirCriacaoDeAlerta());
+        interfaceMapa.btnReportAlert.setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Reportar perigo
+            abrirCriacaoDeAlerta();
+        });
         // As caixas da rota e dos avisos podem mudar de tamanho.
         // Ajusta as posições para não taparem os botões.
         findViewById(R.id.painel_aviso).addOnLayoutChangeListener((v, l, t, r, bottom, ol, ot, or, ob) -> {
@@ -368,6 +371,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
                 menu.getMenu().findItem(R.id.action_toggle_zone_circle).setTitle("Mostrar círculo da zona");
             }
             menu.setOnMenuItemClickListener(item -> {
+                // AÇÃO DO UTILIZADOR — Escolher Zonas Favoritas no menu
                 if (item.getItemId() == R.id.action_favorite_zones) {
                     // Envia o GPS atual para ajudar a pesquisar zonas próximas.
                     Intent intent = new Intent(this, ZonasFavoritasActivity.class);
@@ -413,6 +417,7 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
         configurarCabecalhoHistorico();
         interfaceMapa.searchSuggestions.setAdapter(adaptadorDaPesquisa);
         interfaceMapa.mapSearchBar.setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Tocar na barra de pesquisa
             interfaceMapa.mapSearchInput.requestFocus();
             if (interfaceMapa.mapSearchInput.getText().length() == 0) {
                 mostrarHistoricoPesquisas();
@@ -492,7 +497,10 @@ public class MapActivity extends FragmentActivity implements MapReadyCallback {
             pedirRota();
         });
 
-        interfaceMapa.btnStartTrip.setOnClickListener(view -> iniciarViagem());
+        interfaceMapa.btnStartTrip.setOnClickListener(view -> {
+            // AÇÃO DO UTILIZADOR — Iniciar viagem
+            iniciarViagem();
+        });
         interfaceMapa.btnEndTrip.setOnClickListener(view -> terminarViagem());
         interfaceMapa.btnDismissRoute.setOnClickListener(view -> cancelarRotaPlaneada());
         // Evita mostrar o histórico automaticamente ao abrir o mapa.
