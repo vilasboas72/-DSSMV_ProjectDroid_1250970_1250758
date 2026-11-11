@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
                     .setCancelable(false) // Obriga o utilizador a escolher uma opção.
                     .setPositiveButton(R.string.continue_session, new android.content.DialogInterface.OnClickListener() {
                         public void onClick(android.content.DialogInterface dialog, int which) {
+
                             // Cria um Intent (intenção de viagem) para ir direto para o Mapa.
                             Intent intent = new Intent(MainActivity.this, MapActivity.class);
                             startActivity(intent); // Arranca para o mapa.
@@ -99,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
         btnIrRegisto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 // AÇÃO DO UTILIZADOR — Abrir o registo
                 Intent intent = new Intent(MainActivity.this, RegistoActivity.class);
                 startActivity(intent);
@@ -107,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
 
         // O ecrã lê os campos; o gestor consulta e verifica a conta.
         btnLogin.setOnClickListener(view -> {
+
             // AÇÃO DO UTILIZADOR — Entrar
             String email = editEmail.getText().toString();
             String password = editPassword.getText().toString();
