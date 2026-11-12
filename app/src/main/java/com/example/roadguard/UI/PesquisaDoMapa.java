@@ -127,7 +127,7 @@ final class PesquisaDoMapa {
 
         interfaceMapa.searchSuggestions.setOnItemClickListener((lista, linha, posicao, id) -> {
             // AÇÃO DO UTILIZADOR — Escolher destino
-            int indice = posicao - interfaceMapa.searchSuggestions.getHeaderViewsCount();
+            int indice = posicao - 1; // O cabeçalho ocupa a primeira linha da lista.
             List<TomTomApi.Local> locais = resultadosDaPesquisa;
             if (historicoVisivel) locais = historicoPesquisas;
             if (indice < 0 || indice >= locais.size()) return;
